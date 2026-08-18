@@ -7,6 +7,7 @@ import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.FactoryTier;
 import mekanism.common.tile.factory.TileEntityFactory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,24 +17,39 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class FactoryLinesHelper {
 
+    /**
+     * The implicit processing Lines count for a regular (non-Factory) Mekanism machine, e.g. a plain
+     * Enrichment Chamber. These machines aren't tiered themselves; a Tier Installer upgrades them
+     * directly into the corresponding Basic Factory (see {@code mekanism.common.content.blocktype.Machine.FactoryMachine}).
+     */
+    private static final int SINGLE_MACHINE_LINES = 1;
+
     private FactoryLinesHelper() {
     }
 
     /**
-     * Returns the number of processing Lines for the given Factory block entity's current tier,
-     * or {@code null} if its tier is unknown.
+     * Returns the number of processing Lines currently shown for the given block: the tier's process
+     * count for an actual Factory block entity, {@code 1} for a regular Mekanism machine that could be
+     * upgraded into a Factory, or {@code null} if neither applies (nothing to show).
      */
     @Nullable
-    public static Integer getCurrentLines(TileEntityFactory<?> factory) {
-        FactoryTier tier = factory.tier;
-        return tier == null ? null : tier.processes;
+    public static Integer getCurrentLines(BlockState state, @Nullable BlockEntity blockEntity) {
+        if (blockEntity instanceof TileEntityFactory<?> factory) {
+            FactoryTier tier = factory.tier;
+            return tier == null ? null : tier.processes;
+        }
+        if (Attribute.has(state, AttributeUpgradeable.class)) {
+            return SINGLE_MACHINE_LINES;
+        }
+        return null;
     }
 
     /**
-     * If {@code heldItem} is a Tier Installer that could legally upgrade a Factory block currently in
-     * {@code state}, returns the resulting number of processing Lines after that upgrade. Returns
-     * {@code null} if the held item is not a compatible installer for the block's current tier (i.e.
-     * using it here would have no effect, mirroring {@code ItemTierInstaller}'s own validation).
+     * If {@code heldItem} is a Tier Installer that could legally upgrade a Factory (or regular
+     * machine) block currently in {@code state}, returns the resulting number of processing Lines
+     * after that upgrade. Returns {@code null} if the held item is not a compatible installer for the
+     * block's current tier (i.e. using it here would have no effect, mirroring {@code ItemTierInstaller}'s
+     * own validation).
      */
     @Nullable
     public static Integer getPreviewLines(BlockState state, ItemStack heldItem) {
@@ -45,8 +61,10 @@ public final class FactoryLinesHelper {
             return null;
         }
         BaseTier currentBaseTier = Attribute.getBaseTier(state.getBlockHolder());
-        if (currentBaseTier == null || currentBaseTier != installer.getFromTier() || currentBaseTier == installer.getToTier()) {
-            // Not a valid upgrade path for this installer, same check ItemTierInstaller#useOn performs.
+        // A regular (non-tiered) machine has no BaseTier attribute at all (currentBaseTier == null);
+        // it is a valid target for the Basic Installer, whose fromTier is also null, mirroring
+        // ItemTierInstaller#useOn's own equality check.
+        if (currentBaseTier != installer.getFromTier() || currentBaseTier == installer.getToTier()) {
             return null;
         }
         BlockState upgraded = upgradeable.upgradeResult(state, installer.getToTier());

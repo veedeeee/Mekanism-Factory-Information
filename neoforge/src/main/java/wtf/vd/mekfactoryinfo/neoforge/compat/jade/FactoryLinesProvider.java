@@ -1,11 +1,11 @@
 package wtf.vd.mekfactoryinfo.neoforge.compat.jade;
 
-import mekanism.common.tile.factory.TileEntityFactory;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.ITooltip;
@@ -14,9 +14,10 @@ import wtf.vd.mekfactoryinfo.MekFactoryInfo;
 import wtf.vd.mekfactoryinfo.compat.mekanism.FactoryLinesHelper;
 
 /**
- * Shows the current Mekanism Factory tier's processing Lines count when looking at a Factory block.
- * While the viewing player is sneaking and holding a compatible Tier Installer, shows a preview of
- * the Lines count the installer would upgrade the block to, e.g. {@code Lines: 3 -> 5}.
+ * Shows the current processing Lines count when looking at a Factory block, or the implicit "1
+ * Line" for a regular Mekanism machine that could be upgraded into one. While the viewing player is
+ * sneaking and holding a compatible Tier Installer, shows a preview of the Lines count the installer
+ * would upgrade the block to, e.g. {@code Lines: 3 -> 5} or {@code Lines: 1 -> 3}.
  */
 public enum FactoryLinesProvider implements IBlockComponentProvider {
 
@@ -26,11 +27,9 @@ public enum FactoryLinesProvider implements IBlockComponentProvider {
 
     @Override
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
+        BlockState state = accessor.getBlockState();
         BlockEntity blockEntity = accessor.getBlockEntity();
-        if (!(blockEntity instanceof TileEntityFactory<?> factory)) {
-            return;
-        }
-        Integer currentLines = FactoryLinesHelper.getCurrentLines(factory);
+        Integer currentLines = FactoryLinesHelper.getCurrentLines(state, blockEntity);
         if (currentLines == null) {
             return;
         }
@@ -39,7 +38,7 @@ public enum FactoryLinesProvider implements IBlockComponentProvider {
         Player player = accessor.getPlayer();
         if (player != null && player.isShiftKeyDown()) {
             ItemStack heldItem = player.getMainHandItem();
-            previewLines = FactoryLinesHelper.getPreviewLines(accessor.getBlockState(), heldItem);
+            previewLines = FactoryLinesHelper.getPreviewLines(state, heldItem);
         }
 
         if (previewLines != null) {
