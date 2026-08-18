@@ -1,0 +1,68 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev'
+}
+
+def neoforge2612MinecraftVersion = minecraft_2612_version
+def neoforge2612MinecraftVersionRange = minecraft_2612_version_range
+def neoforge2612Version = neoforge_2612_version
+def neoforge2612LoaderVersionRange = neoforge_2612_loader_version_range
+
+ext.minecraft_version = neoforge2612MinecraftVersion
+ext.minecraft_version_range = neoforge2612MinecraftVersionRange
+ext.neoforge_version = neoforge2612Version
+ext.neoforge_loader_version_range = neoforge2612LoaderVersionRange
+
+base {
+    archivesName = "${archives_name}-neoforge-${neoforge2612MinecraftVersion}"
+}
+
+neoForge {
+    version = neoforge2612Version
+    // Automatically enable neoforge AccessTransformers if the file exists
+    def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.add(at.absolutePath)
+    }
+    runs {
+        configureEach {
+            systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+        }
+        client {
+            client()
+        }
+        data {
+            data()
+        }
+        server {
+            server()
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+configurations.named("compileClasspath").configure {
+    attributes.attribute(
+            org.gradle.api.attributes.Usage.USAGE_ATTRIBUTE,
+            objects.named(org.gradle.api.attributes.Usage, org.gradle.api.attributes.Usage.JAVA_RUNTIME)
+    )
+}
+
+dependencies {
+    compileOnly("maven.modrinth:ae2:${ae2_2612_version}") {
+        transitive = false
+    }
+    runtimeOnly "maven.modrinth:ae2:${ae2_2612_version}"
+    runtimeOnly "maven.modrinth:jei:${jei_2612_version}"
+    runtimeOnly "maven.modrinth:jade:${jade_2612_version}"
+    runtimeOnly "maven.modrinth:guideme:${guideme_2612_version}"
+    // TODO: add Mekanism (NeoForge, Minecraft 26.1.2 build) compile/runtime dependency
+    // once mekanism_version_neoforge2612 in gradle.properties is confirmed.
+}

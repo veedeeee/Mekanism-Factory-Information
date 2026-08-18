@@ -1,21 +1,39 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        maven { url = 'https://maven.neoforged.net/releases' }
-        maven { url = 'https://maven.minecraftforge.net/' }
+        mavenCentral()
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Sponge'
+                    url = uri('https://repo.spongepowered.org/repository/maven-public')
+                }
+            }
+            filter {
+                includeGroupAndSubgroups("org.spongepowered")
+            }
+        }
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Forge'
+                    url = uri('https://maven.minecraftforge.net')
+                }
+            }
+            filter {
+                includeGroupAndSubgroups('net.minecraftforge')
+            }
+        }
     }
 }
 
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
-rootProject.name = 'mek-factory-info'
-
-include 'neoforge-26.1.2'
-include 'neoforge-1.21.1'
-include 'forge-1.20.1'
-
-project(':neoforge-26.1.2').projectDir = file('neoforge-26.1.2')
-project(':neoforge-1.21.1').projectDir = file('neoforge-1.21.1')
-project(':forge-1.20.1').projectDir = file('forge-1.20.1')
+// This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
+rootProject.name = 'Mekanism-Factory-Information'
+include('common')
+include('neoforge')
+include('neoforge2612')
+include('forge')

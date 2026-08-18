@@ -1,35 +1,25 @@
 # Mekanism Factory Information
 
 An add-on mod that exposes Mekanism (and Mekanism-family mod) Factory tier
-information — specifically the resulting number of processing **Lines** —
-to Applied Energistics 2 terminals, and adds a Lines-based sort option to
-the AE2 terminal UI.
+information
 
-## Background
+## Dependencies
+### Required
+- [Mekanism]()
+### Optional
+- [Jade 🔍](https://www.curseforge.com/minecraft/mc-mods/jade)
+- [Applied Energistics 2](https://www.curseforge.com/minecraft/mc-mods/applied-energistics-2)
 
-- Mekanism `Factory` blocks (Basic/Advanced/Elite/Ultimate, and any tiers
-  added by add-ons such as MekanismExtras or EvolvedMekanism) each expose a
-  fixed number of processing Lines via `FactoryTier#processes`.
-- Tier Installer items report the resulting tier
-  (`ItemTierInstaller#getToTier()`), from which the Lines count can be
-  derived.
-- AE2's terminal sort order (`appeng.api.config.SortOrder`) has no public
-  extension point, but Mekanism add-ons (e.g. EvolvedMekanism) demonstrate
-  that new enum constants can be injected into existing enums at runtime via
-  Mixin. This project applies the same technique to add a `LINES` sort
-  order to AE2.
+## Features
+1. Append an information in Jade tooltip for each `Factory` block and `Installer` item (e.g., `Basic Smelting Factory` -> `Lines: 3`)
+2. Append the sort order for AE2 terminal which aligns with lines quantity.
 
 ## Supported targets
-
-This is a multi-module Gradle project. Each module targets one combination
-of Mod Loader / Minecraft version, mirroring the versions used by the
-upstream mods this project integrates with:
-
-| Module                | Mod Loader | Minecraft |
-| --------------------- | ---------- | --------- |
-| `neoforge-26.1.2`     | NeoForge   | 1.21.x    |
-| `neoforge-1.21.1`     | NeoForge   | 1.21.1    |
-| `forge-1.20.1`        | Forge      | 1.20.1    |
+| Module         | Mod Loader | Minecraft |
+| -------------- | ---------- | --------- |
+| `neoforge2612` | NeoForge   | 26.1.2    |
+| `neoforge`     | NeoForge   | 1.21.1    |
+| `forge`        | Forge      | 1.20.1    |
 
 ## License
 
