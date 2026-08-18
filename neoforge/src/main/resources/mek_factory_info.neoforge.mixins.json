@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "wtf.vd.mekfactoryinfo.neoforge.mixin",
+  "compatibilityLevel": "JAVA_${java_version}",
+  "mixins": [],
+  "client": [
+    "AEBaseScreenInvoker",
+    "RepoLinesGroupingMixin",
+    "MEStorageScreenLinesToggleMixin"
+  ],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

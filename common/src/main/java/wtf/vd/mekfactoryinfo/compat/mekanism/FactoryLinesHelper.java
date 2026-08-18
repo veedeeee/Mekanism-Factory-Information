@@ -7,6 +7,7 @@ import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.FactoryTier;
 import mekanism.common.tile.factory.TileEntityFactory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -39,6 +40,24 @@ public final class FactoryLinesHelper {
             return tier == null ? null : tier.processes;
         }
         if (Attribute.has(state, AttributeUpgradeable.class)) {
+            return SINGLE_MACHINE_LINES;
+        }
+        return null;
+    }
+
+    /**
+     * Block-only variant of {@link #getCurrentLines(BlockState, BlockEntity)} for contexts with no
+     * placed block or block entity to inspect, such as an {@code ItemStack} sitting in an AE2 network
+     * (used by the Lines-grouping terminal sort feature). Reads the Factory tier (if any) directly
+     * off the block type rather than a live {@code TileEntityFactory}.
+     */
+    @Nullable
+    public static Integer getLinesForBlock(Block block) {
+        FactoryTier tier = Attribute.getTier(block, FactoryTier.class);
+        if (tier != null) {
+            return tier.processes;
+        }
+        if (Attribute.has(block, AttributeUpgradeable.class)) {
             return SINGLE_MACHINE_LINES;
         }
         return null;

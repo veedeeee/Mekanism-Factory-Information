@@ -1,4 +1,8 @@
 {
   "jade.mek_factory_info.lines": "Lines: %s",
-  "jade.mek_factory_info.lines_preview": "Lines: %s \u2192 %s"
+  "jade.mek_factory_info.lines_preview": "Lines: %s \u2192 %s",
+  "config.jade.plugin_mek_factory_info.factory_lines": "Factory Lines",
+  "gui.mek_factory_info.lines_grouping_toggle.off": "L",
+  "gui.mek_factory_info.lines_grouping_toggle.on": "[L]",
+  "gui.mek_factory_info.lines_grouping_toggle.tooltip": "Group Mekanism machine tiers together by Lines count (applies to Name/Mod sort)"
 }
