@@ -7,4 +7,8 @@ public final class MekFactoryInfo {
 
     private MekFactoryInfo() {
     }
+
+    /** Stable common bootstrap entrypoint for future cross-loader registrations. */
+    public static void init() {
+    }
 }
