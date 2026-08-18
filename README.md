@@ -5,7 +5,7 @@ information
 
 ## Dependencies
 ### Required
-- [Mekanism]()
+- [Mekanism](https://www.curseforge.com/minecraft/mc-mods/mekanism)
 ### Optional
 - [Jade 🔍](https://www.curseforge.com/minecraft/mc-mods/jade)
 - [Applied Energistics 2](https://www.curseforge.com/minecraft/mc-mods/applied-energistics-2)

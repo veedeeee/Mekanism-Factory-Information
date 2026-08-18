@@ -22,6 +22,7 @@ repositories {
             includeGroup "appeng"
             includeGroup "org.appliedenergistics"
             includeGroup "mezz.jei"
+            includeGroup "mekanism"
         }
     }
     maven {
@@ -104,9 +105,9 @@ dependencies {
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.0.0.12")
     runtimeOnly fg.deobf("curse.maven:jade-324717:4573193")
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:20.1.7")
-    // TODO: add Mekanism (Forge, Minecraft 1.20.1, e.g. mekanism_version_forge in
-    // gradle.properties = 1.20.1-10.4.16.80 per the Mekanism-Extras/EvolvedMekanismExtras
-    // reference clones) compile/runtime dependency once confirmed.
+    // Mekanism is a required dependency.
+    compileOnly fg.deobf("mekanism:Mekanism:${mekanism_version_forge}")
+    runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version_forge}")
 
     // Forge's hack fix
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }

@@ -16,13 +16,25 @@ neoForge {
     }
 }
 
+repositories {
+    maven {
+        name = "Modmaven"
+        url = "https://modmaven.dev/"
+        content {
+            includeGroup "mekanism"
+        }
+    }
+}
+
 dependencies {
     compileOnly group: 'org.spongepowered', name: 'mixin', version: '0.8.5'
     // fabric and neoforge both bundle mixinextras, so it is safe to use it in common
     compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
     annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.3.5'
     compileOnly "maven.modrinth:ae2:${ae2_version}"
-    // TODO: add a compileOnly Mekanism dependency once a working version is confirmed (see gradle.properties)
+    // Mekanism is a required dependency; compileOnly here since common is shared across loaders
+    // that each pull in the loader-appropriate Mekanism artifact themselves.
+    compileOnly "mekanism:Mekanism:${mekanism_version_neoforge}"
 }
 
 configurations {
