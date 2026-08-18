@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+out/
+*/build/
+*/out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# Minecraft / NeoForge / Forge run directories
+run/
+runs/
+run-*/
+logs/
+eclipse/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local gradle properties (may contain credentials)
+gradle.properties.local
+local.properties
