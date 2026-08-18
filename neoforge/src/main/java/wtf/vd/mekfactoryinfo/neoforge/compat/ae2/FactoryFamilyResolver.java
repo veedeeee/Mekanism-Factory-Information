@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
+import wtf.vd.mekfactoryinfo.compat.mekanism.FactoryLinesHelper;
 
 /**
  * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, keyed off
@@ -30,7 +31,7 @@ public final class FactoryFamilyResolver {
      * Mekanism block that carries {@link AttributeFactoryType} (i.e. not part of any Factory family).
      */
     @Nullable
-    public static FactoryFamily resolve(AEKey key) {
+    public static SortFamily resolve(AEKey key) {
         Block block = blockOf(key);
         if (block == null) {
             return null;
@@ -43,7 +44,8 @@ public final class FactoryFamilyResolver {
         Block representative = type.getBaseBlock().get();
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(representative);
         String name = representative.asItem().getDescription().getString();
-        return new FactoryFamily(name, id.getNamespace());
+        Integer lines = FactoryLinesHelper.getLinesForBlock(block);
+        return new SortFamily(name, id.getNamespace(), lines == null ? 0 : lines);
     }
 
     @Nullable
