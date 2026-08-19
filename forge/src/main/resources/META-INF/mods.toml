@@ -1,0 +1,44 @@
+modLoader = "javafml" #mandatory
+loaderVersion = "${forge_loader_version_range}" #mandatory
+license = "${license}"
+[[mods]] #mandatory
+modId = "${mod_id}" #mandatory
+version = "${version}" #mandatory
+displayName = "${mod_name}" #mandatory
+credits = "${credits}" #optional
+authors = "${mod_author}" #optional
+description = '''${description}''' #mandatory Supports multiline text
+[[mixins]]
+config = "${mod_id}.mixins.json"
+[[mixins]]
+config = "${mod_id}.forge.mixins.json"
+[[dependencies."${mod_id}"]] #optional
+modId = "forge" #mandatory
+type = "required" #mandatory
+versionRange = "${forge_loader_version_range}" #mandatory
+ordering = "NONE"
+side = "BOTH"
+[[dependencies."${mod_id}"]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+[[dependencies."${mod_id}"]]
+modId = "mekanism"
+type = "required"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
+[[dependencies."${mod_id}"]]
+modId = "jade"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "CLIENT"
+[[dependencies."${mod_id}"]]
+modId = "ae2"
+type = "optional"
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
