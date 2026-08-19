@@ -122,13 +122,13 @@ jobs:
           generate_release_notes: true
 
       # TODO: this project does not have a CurseForge/Modrinth listing yet.
-      # Once one is created, fill in curseforge-id / vars.MODRINTH_PROJECT_ID and
+      # Once one is created, set vars.CURSEFORGE_PROJECT_ID / vars.MODRINTH_PROJECT_ID and
       # the required secrets (CURSEFORGE_TOKEN, MODRINTH_TOKEN), and adjust the
       # `dependencies` line below (this mod depends on Mekanism + AE2, not ExtendedAE).
       # - name: Publish NeoForge 1.21.1 to CurseForge and Modrinth
       #   uses: Kir-Antipov/mc-publish@v3.3
       #   with:
-      #     curseforge-id: TODO
+      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
       #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
       #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
       #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
@@ -146,7 +146,7 @@ jobs:
       # - name: Publish NeoForge 26.1.2 to CurseForge and Modrinth
       #   uses: Kir-Antipov/mc-publish@v3.3
       #   with:
-      #     curseforge-id: TODO
+      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
       #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
       #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
       #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
@@ -163,7 +163,7 @@ jobs:
       # - name: Publish Forge to CurseForge and Modrinth
       #   uses: Kir-Antipov/mc-publish@v3.3
       #   with:
-      #     curseforge-id: TODO
+      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
       #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
       #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
       #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
