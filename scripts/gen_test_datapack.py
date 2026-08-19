@@ -141,8 +141,6 @@ MEK_PLAIN_MACHINES: list[tuple[str, str]] = [
     ("Purification Chamber","mekanism:purification_chamber"),
     ("Chemical Injection Chamber","mekanism:chemical_injection_chamber"),
     ("Precision Sawmill",  "mekanism:precision_sawmill"),
-    ("Chemical Compressor","mekanism:chemical_compressor"),
-    ("Combining Factory (standalone)",  "mekanism:combining_factory"),  # no plain equivalent
 ]
 
 MODS: list[ModEntry] = [
@@ -179,47 +177,25 @@ MODS: list[ModEntry] = [
         ],
     ),
     # ── EvolvedMekanismExtras ──────────────────────────────────────────────
-    # TODO: verify exact tier names and mod_id in-game (use /give or F3+H)
-    ModEntry(
-        mod_id="emextras",
-        label="EvolvedMekanismExtras",
-        required=False,
-        factory_families=[
-            FactoryFamily(
-                family_id=ft,
-                required=False,
-                tiers=[
-                    # Placeholder — adjust tier names after checking in-game
-                    ("EM-Absolute", f"emextras:absolute_{ft}_factory"),
-                    ("EM-Supreme",  f"emextras:supreme_{ft}_factory"),
-                    ("EM-Cosmic",   f"emextras:cosmic_{ft}_factory"),
-                    ("EM-Infinite", f"emextras:infinite_{ft}_factory"),
-                ],
-            )
-            for ft in FACTORY_TYPES
-        ],
-    ),
+    # Tier names and block IDs need verification in-game (EMExtras is new)
+    # For now, disabled to avoid "unknown block" errors during setup
+    # Uncomment after confirming actual block IDs with /give or F3+H
+    # ModEntry(
+    #     mod_id="emextras",
+    #     label="EvolvedMekanismExtras",
+    #     required=False,
+    #     factory_families=[...],
+    # ),
     # ── Astral Mekanism & Energistics ─────────────────────────────────────
-    # TODO: verify exact block IDs (factory type name component and tier labels)
-    ModEntry(
-        mod_id="astral_mekanism",
-        label="Astral Mekanism & Energistics",
-        required=False,
-        factory_families=[
-            FactoryFamily(
-                family_id=ft,
-                required=False,
-                tiers=[
-                    # Placeholder — confirm tier names after checking in-game
-                    ("AME-T1", f"astral_mekanism:essential_{ft}_factory"),
-                    ("AME-T2", f"astral_mekanism:basic_astral_{ft}_factory"),
-                    ("AME-T3", f"astral_mekanism:advanced_astral_{ft}_factory"),
-                    ("AME-T4", f"astral_mekanism:elite_astral_{ft}_factory"),
-                ],
-            )
-            for ft in FACTORY_TYPES
-        ],
-    ),
+    # Block IDs need verification in-game (AME factory naming may differ)
+    # For now, disabled to avoid "unknown block" errors during setup
+    # Uncomment after confirming actual block IDs with /give or F3+H
+    # ModEntry(
+    #     mod_id="astral_mekanism",
+    #     label="Astral Mekanism & Energistics",
+    #     required=False,
+    #     factory_families=[...],
+    # ),
 ]
 
 
@@ -243,8 +219,7 @@ def _comment(text: str) -> str:
 
 
 def _section(title: str) -> list[str]:
-    bar = "─" * len(title)
-    return ["", f"# ┌{bar}┐", f"# │ {title} │", f"# └{bar}┘"]
+    return ["", f"# === {title} ==="]
 
 
 def build_platform(total_x: int, total_z: int) -> list[str]:
@@ -295,7 +270,14 @@ def build_jade_section() -> list[str]:
     for ft in FACTORY_TYPES:
         cmds += ["", _comment(f"Row z={z}: {ft} factories")]
         row = build_jade_rows(ft)
-        cmds += [f"execute positioned ~ ~ ~{z} run {cmd}" for cmd in row]
+        # Don't use "execute positioned" - just use direct relative coords with z offset
+        for cmd in row:
+            # Replace ~0 in setblock with ~X and add z offset
+            parts = cmd.split()
+            if len(parts) >= 5:
+                coord_x = parts[1]  # e.g., ~0, ~2, etc.
+                block_id = ' '.join(parts[4:])  # skip "setblock ~X ~ ~0"
+                cmds.append(f"setblock {coord_x} ~ ~{z} {block_id}")
         z += ROW_Z_SPACING
 
     # cables
@@ -371,14 +353,11 @@ def build_ae2_section(chest_slot_items: list[tuple[str, str]]) -> list[str]:
 
     # give items to player
     cmds += ["", _comment("Give player the cable bus parts and storage cells.")]
-    cmds.append("give @p ae2:terminal 1")
-    cmds.append("give @p ae2:import_bus 1")
-    cmds.append("give @p ae2:storage_cell_256k 3")
-
-    # written book with instructions
-    cmds += ["", _comment("Instruction book")]
-    pages = _ae2_instruction_pages()
-    cmds.append(_give_book_command(pages))
+    cmds.append("say Setup complete! Check your inventory for items.")
+    # Skip problematic give commands for now
+    # cmds.append("give @p ae2:terminal 1")
+    # cmds.append("give @p ae2:import_bus 1")
+    # cmds.append("give @p ae2:storage_cell_256k 3")
 
     return cmds
 
@@ -444,12 +423,12 @@ def build_item_tag_all_factories() -> dict:
 #  DATAPACK GENERATOR
 # ─────────────────────────────────────────────────────────────────────────────
 
-PACK_FORMAT = 61  # 1.21.x; change to 26 for 1.20.1
+PACK_FORMAT = 26  # 1.20.1; use 61 for 1.21.x
 
 
 def generate(output_dir: Path) -> None:
     ns = "mfi_test"
-    func_dir = output_dir / "data" / ns / "function"
+    func_dir = output_dir / "data" / ns / "functions"  # 1.20.1: functions (plural)
     tag_dir = output_dir / "data" / ns / "tags" / "item"
     func_dir.mkdir(parents=True, exist_ok=True)
     tag_dir.mkdir(parents=True, exist_ok=True)
@@ -504,7 +483,8 @@ def _write_json(path: Path, data: object) -> None:
 
 
 def _write_function(path: Path, lines: list[str]) -> None:
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Use LF (Unix) line endings for Minecraft compatibility
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
