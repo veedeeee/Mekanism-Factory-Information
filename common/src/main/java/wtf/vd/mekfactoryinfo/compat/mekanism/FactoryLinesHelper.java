@@ -53,7 +53,7 @@ public final class FactoryLinesHelper {
      */
     @Nullable
     public static Integer getLinesForBlock(Block block) {
-        FactoryTier tier = Attribute.getTier(block, FactoryTier.class);
+        FactoryTier tier = TierAttributeHelper.getTierSafely(block, FactoryTier.class);
         if (tier != null) {
             return tier.processes;
         }
@@ -90,7 +90,7 @@ public final class FactoryLinesHelper {
         if (upgraded == state) {
             return null;
         }
-        FactoryTier afterTier = Attribute.getTier(upgraded.getBlockHolder(), FactoryTier.class);
+        FactoryTier afterTier = TierAttributeHelper.getTierSafely(upgraded.getBlockHolder(), FactoryTier.class);
         return afterTier == null ? null : afterTier.processes;
     }
 }
