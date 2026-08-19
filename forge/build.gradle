@@ -103,6 +103,7 @@ dependencies {
     compileOnly "maven.modrinth:ae2:7KVs6HMQ"
     runtimeOnly "maven.modrinth:ae2:7KVs6HMQ"
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.0.0.12")
+    compileOnly fg.deobf("curse.maven:jade-324717:4573193")
     runtimeOnly fg.deobf("curse.maven:jade-324717:4573193")
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:20.1.7")
     // Mekanism is a required dependency.
@@ -118,6 +119,27 @@ publishing {
         mavenJava(MavenPublication) {
             fg.component(it)
         }
+    }
+}
+
+tasks.named('sourcesJar', Jar) {
+    // Forge-specific CableSpecHelper/TankSpecHelper replace the common versions.
+    // Keep the first occurrence (forge-local) and discard the common duplicate.
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named('compileJava', JavaCompile) {
+    // Exclude CableSpecHelper and TankSpecHelper from common sources; Forge 1.20.1 provides
+    // its own versions under forge/src/main/java with the same package (FloatingLong-aware).
+    doFirst {
+        setSource(getSource().matching {
+            exclude { e ->
+                def filePath = e.file.absolutePath.replace('\\' as char, '/' as char)
+                def isFromCommon = filePath.contains('/common/src/')
+                def isVersionSpecificHelper = e.name == 'CableSpecHelper.java' || e.name == 'TankSpecHelper.java'
+                isFromCommon && isVersionSpecificHelper
+            }
+        })
     }
 }
 

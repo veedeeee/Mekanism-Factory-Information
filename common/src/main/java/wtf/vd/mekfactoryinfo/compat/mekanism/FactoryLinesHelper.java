@@ -2,6 +2,7 @@ package wtf.vd.mekfactoryinfo.compat.mekanism;
 
 import mekanism.api.tier.BaseTier;
 import mekanism.common.block.attribute.Attribute;
+import mekanism.common.block.attribute.AttributeTier;
 import mekanism.common.block.attribute.AttributeUpgradeable;
 import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.FactoryTier;
@@ -79,7 +80,8 @@ public final class FactoryLinesHelper {
         if (upgradeable == null) {
             return null;
         }
-        BaseTier currentBaseTier = Attribute.getBaseTier(state.getBlockHolder());
+        AttributeTier<?> tierAttribute = Attribute.get(state, AttributeTier.class);
+        BaseTier currentBaseTier = tierAttribute == null ? null : tierAttribute.tier().getBaseTier();
         // A regular (non-tiered) machine has no BaseTier attribute at all (currentBaseTier == null);
         // it is a valid target for the Basic Installer, whose fromTier is also null, mirroring
         // ItemTierInstaller#useOn's own equality check.
