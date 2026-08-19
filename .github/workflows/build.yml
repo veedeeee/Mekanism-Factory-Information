@@ -37,7 +37,6 @@ jobs:
           REQUIRED=(
             "forge/build/libs/mek-factory-info-forge-1.20.1-${VERSION}.jar"
             "neoforge/build/libs/mek-factory-info-neoforge-1.21.1-${VERSION}.jar"
-            "neoforge2612/build/libs/mek-factory-info-neoforge-26.1.2-${VERSION}.jar"
           )
           for file in "${REQUIRED[@]}"; do
             if [ ! -f "$file" ]; then
@@ -51,12 +50,6 @@ jobs:
         with:
           name: neoforge-jars
           path: neoforge/build/libs/*.jar
-
-      - name: Upload NeoForge 26.1.2 artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: neoforge2612-jars
-          path: neoforge2612/build/libs/*.jar
 
       - name: Upload Forge artifact
         uses: actions/upload-artifact@v7.0.1

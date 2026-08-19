@@ -85,7 +85,6 @@ jobs:
           REQUIRED=(
             "forge/build/libs/mek-factory-info-forge-1.20.1-${VERSION}.jar"
             "neoforge/build/libs/mek-factory-info-neoforge-1.21.1-${VERSION}.jar"
-            "neoforge2612/build/libs/mek-factory-info-neoforge-26.1.2-${VERSION}.jar"
           )
           for file in "${REQUIRED[@]}"; do
             if [ ! -f "$file" ]; then
@@ -106,7 +105,7 @@ jobs:
               --pattern "*.jar" --dir release-jars \
               --repo ${{ github.repository }}
           else
-            find neoforge/build/libs neoforge2612/build/libs forge/build/libs \
+            find neoforge/build/libs forge/build/libs \
               -name "*.jar" ! -name "*-sources*" ! -name "*-dev*" ! -name "*-javadoc*" \
               -exec cp {} release-jars/ \;
           fi
