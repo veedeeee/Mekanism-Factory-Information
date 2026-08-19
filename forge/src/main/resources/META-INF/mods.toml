@@ -8,6 +8,7 @@ displayName = "${mod_name}" #mandatory
 credits = "${credits}" #optional
 authors = "${mod_author}" #optional
 description = '''${description}''' #mandatory Supports multiline text
+clientSideOnly = true
 [[mixins]]
 config = "${mod_id}.mixins.json"
 [[mixins]]
@@ -29,7 +30,7 @@ modId = "mekanism"
 type = "required"
 versionRange = "*"
 ordering = "AFTER"
-side = "BOTH"
+side = "CLIENT"
 [[dependencies."${mod_id}"]]
 modId = "jade"
 type = "optional"
@@ -41,4 +42,4 @@ modId = "ae2"
 type = "optional"
 versionRange = "*"
 ordering = "AFTER"
-side = "BOTH"
+side = "CLIENT"
