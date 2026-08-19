@@ -1,6 +1,7 @@
 package wtf.vd.mekfactoryinfo.neoforge.mixin;
 
 import appeng.client.gui.me.common.Repo;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
@@ -37,7 +38,7 @@ public abstract class MEStorageScreenLinesToggleMixin {
         var self = (AEBaseScreenInvoker) (Object) this;
         this.mekfactoryinfo$linesGroupingButton = self.mekfactoryinfo$addToLeftToolbar(Button.builder(
                         mekfactoryinfo$buttonLabel(), btn -> mekfactoryinfo$onPress())
-                .tooltip(Tooltip.create(Component.translatable("gui.mek_factory_info.lines_grouping_toggle.tooltip")))
+                .tooltip(Tooltip.create(mekfactoryinfo$tooltipMessage()))
                 .bounds(0, 0, 16, 16)
                 .build());
     }
@@ -46,6 +47,7 @@ public abstract class MEStorageScreenLinesToggleMixin {
     private void mekfactoryinfo$onPress() {
         LinesGroupingClientState.toggle();
         this.mekfactoryinfo$linesGroupingButton.setMessage(mekfactoryinfo$buttonLabel());
+        this.mekfactoryinfo$linesGroupingButton.setTooltip(Tooltip.create(mekfactoryinfo$tooltipMessage()));
         this.repo.updateView();
     }
 
@@ -56,5 +58,21 @@ public abstract class MEStorageScreenLinesToggleMixin {
                 : "gui.mek_factory_info.lines_grouping_toggle.off";
         return Component.translatable(key);
     }
+
+    /**
+     * Builds the two-line tooltip Component, mirroring AE2's own toggle-button tooltip convention -
+     * a white title followed by a gray description line (see {@code appeng.client.gui.Tooltip}).
+     */
+    @Unique
+    private static Component mekfactoryinfo$tooltipMessage() {
+        String descriptionKey = LinesGroupingClientState.isEnabled()
+                ? "gui.mek_factory_info.lines_grouping_toggle.enabled"
+                : "gui.mek_factory_info.lines_grouping_toggle.disabled";
+        return Component.translatable("gui.mek_factory_info.lines_grouping_toggle.title")
+                .withStyle(ChatFormatting.WHITE)
+                .append("\n")
+                .append(Component.translatable(descriptionKey).withStyle(ChatFormatting.GRAY));
+    }
 }
+
 

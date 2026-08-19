@@ -4,5 +4,7 @@
   "config.jade.plugin_mek_factory_info.factory_lines": "Factory Lines",
   "gui.mek_factory_info.lines_grouping_toggle.off": "L",
   "gui.mek_factory_info.lines_grouping_toggle.on": "[L]",
-  "gui.mek_factory_info.lines_grouping_toggle.tooltip": "Group Mekanism machine tiers together by Lines count (applies to Name/Mod sort)"
+  "gui.mek_factory_info.lines_grouping_toggle.title": "Group Mekanism Items",
+  "gui.mek_factory_info.lines_grouping_toggle.enabled": "Applied grouping for Item name/Mods sorting",
+  "gui.mek_factory_info.lines_grouping_toggle.disabled": "Disabled"
 }
