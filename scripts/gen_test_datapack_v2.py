@@ -423,16 +423,27 @@ def _write_function(path: Path, lines: list[str]) -> None:
 
 if __name__ == "__main__":
   if len(sys.argv) < 2:
-    print("Usage: gen_test_datapack_v2.py <output_dir> [mods_dir]")
-    print("  output_dir: where to write the datapack")
-    print("  mods_dir:   path to mods folder (default: ../mods)")
+    print("Usage: gen_test_datapack_v2.py <world_dir>")
+    print("  world_dir: Minecraft world directory (e.g. .../saves/New World)")
+    print("  Automatically finds mods in parent directory and outputs to world/datapacks/")
     sys.exit(1)
-  
-  out = Path(sys.argv[1])
-  mods = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("../mods")
-  
-  if not mods.exists():
-    print(f"ERROR: Mods directory not found: {mods.resolve()}")
+
+  world_dir = Path(sys.argv[1]).resolve()
+
+  if not world_dir.exists():
+    print(f"ERROR: World directory not found: {world_dir}")
     sys.exit(1)
-  
-  generate(out, mods)
+
+  # Infer mods dir: world is at .../Instances/{instance_name}/saves/{world_name}
+  # So parent.parent is the instance root (or Instance directory)
+  mods_dir = world_dir.parent.parent / "mods"
+
+  if not mods_dir.exists():
+    print(f"ERROR: Mods directory not found: {mods_dir}")
+    print(f"       Expected at: {mods_dir.resolve()}")
+    sys.exit(1)
+
+  # Output to world/datapacks/mfi-test-setup
+  output_dir = world_dir / "datapacks" / "mfi-test-setup"
+
+  generate(output_dir, mods_dir)
