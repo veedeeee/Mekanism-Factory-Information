@@ -7,6 +7,7 @@ import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.ChemicalTankTier;
 import mekanism.common.tier.EnergyCubeTier;
 import mekanism.common.tier.FluidTankTier;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -90,9 +91,21 @@ public final class TankSpecHelper {
      */
     @Nullable
     public static TankSpec getPreviewSpec(BlockState state, ItemStack heldItem) {
-        if (!(heldItem.getItem() instanceof ItemTierInstaller installer)) {
-            return null;
+        Item item = heldItem.getItem();
+        if (item instanceof ItemTierInstaller installer) {
+            return previewViaVanillaInstaller(state, installer);
         }
+        // Addon mods (MekanismExtras' ExtraItemTierInstaller and similarly-shaped future addons)
+        // upgrade their own Tanks/Energy Cubes through the exact same ExtraAttributeUpgradeable
+        // mechanic MekanismExtras' Factories use (see each block's own registration), so this reuses
+        // FactoryLinesHelper's addon Tier Installer reflection to resolve the upgraded block instead
+        // of requiring a separate, addon-specific mapping here.
+        BlockState upgraded = FactoryLinesHelper.previewAddonInstallerUpgrade(state, item);
+        return upgraded == null ? null : getCurrentSpec(upgraded);
+    }
+
+    @Nullable
+    private static TankSpec previewViaVanillaInstaller(BlockState state, ItemTierInstaller installer) {
         AttributeUpgradeable upgradeable = Attribute.get(state, AttributeUpgradeable.class);
         if (upgradeable == null) {
             return null;

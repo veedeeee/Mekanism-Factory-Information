@@ -228,6 +228,21 @@ public final class FactoryLinesHelper {
      */
     @Nullable
     private static Integer previewViaAddonInstaller(BlockState state, Item item) {
+        BlockState upgraded = previewAddonInstallerUpgrade(state, item);
+        return upgraded == null ? null : getLinesForBlock(upgraded.getBlockHolder().value());
+    }
+
+    /**
+     * Reflective resolution of what an addon Tier Installer item (see {@link #previewViaAddonInstaller})
+     * would upgrade {@code state} to, without assuming anything about what kind of block it targets --
+     * shared by {@link #previewViaAddonInstaller} (Factories) and {@code TankSpecHelper}'s equivalent
+     * preview (Tanks/Energy Cubes, which reuse this exact same {@code ExtraAttributeUpgradeable}-shaped
+     * mechanic per MekanismExtras' own block registration). Returns {@code null} if {@code item}
+     * doesn't match the expected addon Tier Installer shape, or the upgrade wouldn't apply to
+     * {@code state} (no-op, mirroring the vanilla path).
+     */
+    @Nullable
+    static BlockState previewAddonInstallerUpgrade(BlockState state, Item item) {
         Object toTier = tryInvoke(item, "getToTier");
         if (toTier == null) {
             return null;
@@ -252,7 +267,7 @@ public final class FactoryLinesHelper {
                     if (!(result instanceof BlockState upgraded) || upgraded == state) {
                         return null;
                     }
-                    return getLinesForBlock(upgraded.getBlockHolder().value());
+                    return upgraded;
                 } catch (ReflectiveOperationException e) {
                     return null;
                 }
