@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""
-Mekanism Factory Information - Test Environment Datapack Generator v2
-
-Generates a Minecraft datapack for a comprehensive test environment with:
-  - AE2 Area: ME network infrastructure + large chest for items
-  - Mekanism Area: organized by machine type (Smelter, Energy Cube, Fluid Tank, 
-                   Chemical Tank, Thermodynamic Conductor), with Mekanism base
-                   tier + addon tiers in separate rows
-
-Layout (top-down):
-  Z = -10..0: AE2 Area (north) — ME blocks + chest
-  Z = 5+:     Mekanism Area (south) — organized test machines
-
-Each machine family (Smelter, Energy Cube, etc.) occupies multiple Z rows:
-  - Row 0: Mekanism basic → ultimate
-  - Row 1 (2n): Air gap
-  - Row 2 (2n+1): First addon's machines
-  - Row 3 (2n+2): Air gap
-  - Row 4 (2n+3): Second addon's machines
-  - etc.
-"""
 
 from __future__ import annotations
 
@@ -78,7 +57,7 @@ class ModMachines:
 MEKANISM_TIERS = ["basic", "advanced", "elite", "ultimate"]
 MEKANISM_EXTRAS_TIERS = ["absolute", "supreme", "cosmic", "infinite"]
 EVOLVED_MEKANISM_TIERS = ["overclocked", "quantum", "dense", "multiversal"]
-EVOLVED_MEKANISM_EXTRAS_TIERS = ["absoluite_overclocked", "supreme_quantum", "cosmic_dense", "infinite_multiversal"]
+EVOLVED_MEKANISM_EXTRAS_TIERS = ["absolute_overclocked", "supreme_quantum", "cosmic_dense", "infinite_multiversal"]
 ASTRAL_NONASTRAL_MEKANISM_TIERS = ["essential_energized", "basic_standard_energized", "advanced_energized", "elite_energized", "enchanted_ultimate_energized", "absolute_overclocked_energized", "supreme_quantum_energized", "cosmic_dense_energized", "infinite_multiversal_energized"]
 ASTRAL_ASTRAL_MEKANISM_TIERS = [x.replace("_energized", "_astral_energized") for x in ASTRAL_NONASTRAL_MEKANISM_TIERS]
 
@@ -275,7 +254,7 @@ def _init_registry(mods_dir: Path) -> None:
 #  LAYOUT CONSTANTS
 # ─────────────────────────────────────────────────────────────────────────────
 
-BLOCK_SPACING = 2  # X spacing between blocks in a row
+BLOCK_SPACING = 1  # X spacing between blocks in a row
 MOD_GAP = 3        # X gap between mods
 
 AE2_Z_OFFSET = -2     # AE2 area at negative Z
@@ -315,7 +294,7 @@ def generate(output_dir: Path, mods_dir: Path) -> None:
   ]
 
   # calculate dimensions
-  mekanism_z_end = MEKANISM_Z_START + (len(MACHINES) * 3)
+  mekanism_z_end = MEKANISM_Z_START + sum(len(family.machine_lines) * 3 for family in MACHINES)
   total_z = mekanism_z_end + 5
 
   max_x = max(
@@ -323,7 +302,6 @@ def generate(output_dir: Path, mods_dir: Path) -> None:
     20,
   ) * BLOCK_SPACING
 
-  cmds += _build_platform(max_x, total_z)
   cmds += _build_ae2_section()
   cmds += _build_mekanism_section()
 
@@ -333,23 +311,14 @@ def generate(output_dir: Path, mods_dir: Path) -> None:
   print(f"    Copy to <world>/datapacks/, then run /reload and /function {ns}:setup")
 
 
-def _build_platform(total_x: int, total_z: int) -> list[str]:
-  return [
-    "# === Platform ===",
-    f"fill ~-5 ~-1 ~{AE2_Z_OFFSET - 5} ~{total_x + 5} ~-1 ~{total_z + 5} minecraft:stone",
-    f"fill ~-5 ~ ~{AE2_Z_OFFSET - 5} ~{total_x + 5} ~20 ~{total_z + 5} minecraft:air",
-    "",
-  ]
-
-
 def _build_ae2_section() -> list[str]:
   cmds = ["# === AE2 Area ==="]
 
   z = AE2_Z_OFFSET
   # ME infrastructure in a line
   cmds.append(f"setblock ~0 ~ ~{z} ae2:creative_energy_cell")
-  cmds.append(f"setblock ~0 ~ ~{z+1} ae2:controller")
-  cmds.append(f"setblock ~0 ~1 ~{z+1} ae2:drive")
+  cmds.append(f"setblock ~1 ~ ~{z} ae2:controller")
+  cmds.append(f"setblock ~1 ~1 ~{z} ae2:drive")
   cmds.append("give @p ae2:fluix_glass_cable 64")
   cmds.append("give @p ae2:pattern_encoding_terminal")
   cmds.append("give @p ae2:crafting_terminal")
@@ -402,7 +371,7 @@ def _build_mekanism_section() -> list[str]:
         x += BLOCK_SPACING
       
       if has_valid_block:
-        z += 2  # 1 for blocks + 1 for air gap
+        z += 3  # 1 for blocks + 2 for air gap
 
     cmds.append("")
 
