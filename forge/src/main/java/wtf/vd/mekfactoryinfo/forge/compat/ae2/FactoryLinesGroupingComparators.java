@@ -42,6 +42,12 @@ public final class FactoryLinesGroupingComparators {
         return family == null ? 0 : family.rank();
     }
 
+    /**
+     * Tries the Mekanism machine (Factory) family first, then {@link AstralMekanismFamilyResolver}'s
+     * explicit addon carve-out, then {@link TieredBlockFamilyResolver} for tiered storage blocks
+     * (Tank, Energy Cube), then finally falls back to the generic tier-prefixed item family, since
+     * all four key off different, non-overlapping identifying attributes.
+     */
     @Nullable
     private static SortFamily resolveFamily(AEKey key) {
         SortFamily family = FactoryFamilyResolver.resolve(key);
@@ -54,6 +60,10 @@ public final class FactoryLinesGroupingComparators {
             SortFamily astralFamily = AstralMekanismFamilyResolver.resolve(block, blockId);
             if (astralFamily != null) {
                 return astralFamily;
+            }
+            SortFamily storageFamily = TieredBlockFamilyResolver.resolve(block, blockId);
+            if (storageFamily != null) {
+                return storageFamily;
             }
         }
         if (key instanceof AEItemKey itemKey) {

@@ -51,6 +51,28 @@ public final class TierBridgeHelper {
         return unwrapped == null ? null : index.get(unwrapped);
     }
 
+    /**
+     * Returns the tier object carried by {@code block}'s own tiered-storage/transmitter Attribute --
+     * Mekanism's own {@code AttributeTier<?>#tier()}, or an addon's custom Attribute exposing the
+     * same {@code tier()} accessor convention (see {@link #tierOf(Attribute)}) -- or {@code null} if
+     * the block carries no such Attribute at all. Intended for callers that need to rank tiered
+     * storage blocks (Tank, Energy Cube) which have no {@code processes} count of their own to index
+     * by, so cannot use {@link #rankOf} directly without first obtaining this tier object.
+     */
+    @Nullable
+    public static Object anyTierOf(Block block) {
+        if (!(block instanceof ITypeBlock typeBlock)) {
+            return null;
+        }
+        for (Attribute attr : typeBlock.getType().getAll()) {
+            Object tierObj = tierOf(attr);
+            if (tierObj != null) {
+                return tierObj;
+            }
+        }
+        return null;
+    }
+
     private static Map<Object, Integer> index() {
         if (linesByTierObject == null) {
             Map<Object, Integer> map = new HashMap<>();
