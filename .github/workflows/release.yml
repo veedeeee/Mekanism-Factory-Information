@@ -1,5 +1,7 @@
 name: Release
 
+# Runs on every push to main (e.g. a merged release/vX.Y.Z PR), building all loaders and
+# publishing a GitHub Release for the version currently set in gradle.properties.
 on:
   push:
     branches:
@@ -75,7 +77,10 @@ jobs:
 
       - name: Build all loaders
         if: steps.tag_check.outputs.exists == 'false'
-        run: ./gradlew build --console=plain
+        # neoforge2612 is intentionally excluded: Mekanism has no release for NeoForge 26.1.2 yet,
+        # so its module still has a TODO Mekanism version and cannot compile the shared common
+        # sources. Only build the loaders that are actually shipped.
+        run: ./gradlew :forge:build :neoforge:build --console=plain
 
       - name: Verify expected release jars
         if: steps.tag_check.outputs.exists == 'false'

@@ -28,7 +28,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build all loaders
-        run: ./gradlew build --console=plain
+        # neoforge2612 is intentionally excluded: Mekanism has no release for NeoForge 26.1.2 yet,
+        # so its module still has a TODO Mekanism version and cannot compile the shared common
+        # sources. Only build the loaders that are actually shipped.
+        run: ./gradlew :forge:build :neoforge:build --console=plain
 
       - name: Verify expected loader jars
         shell: bash
