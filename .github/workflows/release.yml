@@ -126,62 +126,45 @@ jobs:
           files: release-jars/*.jar
           generate_release_notes: true
 
-      # TODO: this project does not have a CurseForge/Modrinth listing yet.
-      # Once one is created, set vars.CURSEFORGE_PROJECT_ID / vars.MODRINTH_PROJECT_ID and
-      # the required secrets (CURSEFORGE_TOKEN, MODRINTH_TOKEN), and adjust the
-      # `dependencies` line below (this mod depends on Mekanism + AE2, not ExtendedAE).
-      # - name: Publish NeoForge 1.21.1 to CurseForge and Modrinth
-      #   uses: Kir-Antipov/mc-publish@v3.3
-      #   with:
-      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
-      #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-      #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
-      #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-      #     files: release-jars/*neoforge-1.21.1*.jar
-      #     name: ${{ steps.version.outputs.tag }}
-      #     version: ${{ steps.version.outputs.version }}-neoforge-1.21.1
-      #     version-type: release
-      #     changelog: ${{ steps.changelog.outputs.body }}
-      #     loaders: neoforge
-      #     game-versions: 1.21.1
-      #     environment: client | server
-      #     dependencies: mekanism(required)
-      #     fail-mode: warn
+      # neoforge2612 is intentionally excluded: Mekanism has no release for NeoForge 26.1.2 yet
+      # (see the "Build all loaders" step above), so there is no jar to publish for it.
+      - name: Publish NeoForge 1.21.1 to CurseForge and Modrinth
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: release-jars/*neoforge-1.21.1*.jar
+          name: ${{ steps.version.outputs.tag }}
+          version: ${{ steps.version.outputs.version }}-neoforge-1.21.1
+          version-type: release
+          changelog: ${{ steps.changelog.outputs.body }}
+          loaders: neoforge
+          game-versions: 1.21.1
+          environment: client | server
+          dependencies: mekanism(required)
+          fail-mode: warn
 
-      # - name: Publish NeoForge 26.1.2 to CurseForge and Modrinth
-      #   uses: Kir-Antipov/mc-publish@v3.3
-      #   with:
-      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
-      #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-      #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
-      #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-      #     files: release-jars/*neoforge-26.1.2*.jar
-      #     name: ${{ steps.version.outputs.tag }}
-      #     version: ${{ steps.version.outputs.version }}-neoforge-26.1.2
-      #     version-type: release
-      #     loaders: neoforge
-      #     game-versions: 26.1.2
-      #     environment: client | server
-      #     dependencies: mekanism(required)
-      #     fail-mode: warn
-
-      # - name: Publish Forge to CurseForge and Modrinth
-      #   uses: Kir-Antipov/mc-publish@v3.3
-      #   with:
-      #     curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
-      #     curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-      #     modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
-      #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-      #     files: release-jars/*forge-1.20*.jar
-      #     name: ${{ steps.version.outputs.tag }}
-      #     version: ${{ steps.version.outputs.version }}-forge
-      #     version-type: release
-      #     changelog: ${{ steps.changelog.outputs.body }}
-      #     loaders: forge
-      #     game-versions: 1.20.1
-      #     environment: client | server
-      #     dependencies: mekanism(required)
-      #     fail-mode: warn
+      - name: Publish Forge to CurseForge and Modrinth
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: release-jars/*forge-1.20*.jar
+          name: ${{ steps.version.outputs.tag }}
+          version: ${{ steps.version.outputs.version }}-forge
+          version-type: release
+          changelog: ${{ steps.changelog.outputs.body }}
+          loaders: forge
+          game-versions: 1.20.1
+          environment: client | server
+          dependencies: mekanism(required)
+          fail-mode: warn
 
       - name: Create main to develop sync PR
         if: always()
