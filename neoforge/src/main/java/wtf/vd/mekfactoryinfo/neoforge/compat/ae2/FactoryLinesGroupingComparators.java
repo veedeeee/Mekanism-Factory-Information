@@ -5,6 +5,9 @@ import appeng.api.config.SortOrder;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import java.util.Comparator;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -51,14 +54,23 @@ public final class FactoryLinesGroupingComparators {
     }
 
     /**
-     * Tries the Mekanism machine (Factory) family first, then falls back to the generic tier-prefixed
-     * item family, since both key off different, non-overlapping identifying attributes.
+     * Tries the Mekanism machine (Factory) family first, then {@link AstralMekanismFamilyResolver}'s
+     * explicit addon carve-out, then finally falls back to the generic tier-prefixed item family,
+     * since all three key off different, non-overlapping identifying attributes.
      */
     @Nullable
     private static SortFamily resolveFamily(AEKey key) {
         SortFamily family = FactoryFamilyResolver.resolve(key);
         if (family != null) {
             return family;
+        }
+        Block block = FactoryFamilyResolver.blockOf(key);
+        if (block != null) {
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+            SortFamily astralFamily = AstralMekanismFamilyResolver.resolve(block, blockId);
+            if (astralFamily != null) {
+                return astralFamily;
+            }
         }
         if (key instanceof AEItemKey itemKey) {
             return TieredItemFamilyResolver.resolve(itemKey.getItem());

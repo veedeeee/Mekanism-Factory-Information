@@ -1,0 +1,137 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Client (:neoforge)",
+      "presentation": {
+        "group": "Mod Development - neoforge",
+        "order": 0
+      },
+      "projectName": "neoforge",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Data (:neoforge)",
+      "presentation": {
+        "group": "Mod Development - neoforge",
+        "order": 1
+      },
+      "projectName": "neoforge",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\dataRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Server (:neoforge)",
+      "presentation": {
+        "group": "Mod Development - neoforge",
+        "order": 2
+      },
+      "projectName": "neoforge",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Client (:neoforge2612)",
+      "presentation": {
+        "group": "Mod Development - neoforge2612",
+        "order": 0
+      },
+      "projectName": "neoforge2612",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\clientRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\clientRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge2612\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Data (:neoforge2612)",
+      "presentation": {
+        "group": "Mod Development - neoforge2612",
+        "order": 1
+      },
+      "projectName": "neoforge2612",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\dataRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\dataRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge2612\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "NeoForge Server (:neoforge2612)",
+      "presentation": {
+        "group": "Mod Development - neoforge2612",
+        "order": 2
+      },
+      "projectName": "neoforge2612",
+      "mainClass": "net.neoforged.devlaunch.Main",
+      "args": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\serverRunProgramArgs.txt"
+      ],
+      "vmArgs": [
+        "@C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\build\\moddev\\serverRunVmArgs.txt",
+        "-Dfml.modFolders\u003dmek_factory_info%%C:\\Users\\v\\repo\\Mekanism-Factory-Information\\neoforge2612\\bin\\main"
+      ],
+      "cwd": "${workspaceFolder}\\neoforge2612\\run",
+      "env": {},
+      "console": "internalConsole",
+      "shortenCommandLine": "none"
+    }
+  ]
+}

@@ -2,20 +2,12 @@ package wtf.vd.mekfactoryinfo.neoforge.compat.ae2;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Supplier;
-import mekanism.api.tier.BaseTier;
+import mekanism.api.providers.IBlockProvider;
+import mekanism.api.text.IHasTranslationKey;
 import mekanism.common.block.attribute.Attribute;
-import mekanism.common.block.attribute.AttributeUpgradeable;
-import mekanism.common.block.interfaces.ITypeBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
@@ -23,177 +15,124 @@ import org.jetbrains.annotations.Nullable;
 import wtf.vd.mekfactoryinfo.compat.mekanism.FactoryLinesHelper;
 
 /**
- * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, by walking the block's
- * Tier Installer upgrade chain ({@link AttributeUpgradeable}) rather than keying off Mekanism's own
- * {@code FactoryType}/{@code AttributeFactoryType}. Every regular machine and Factory tier that the
- * Tier Installer can upgrade between - Mekanism's own (e.g. Chemical Oxidizer -> Basic/Advanced/Elite/
- * Ultimate Oxidizing Factory) or a third-party addon's - carries {@link AttributeUpgradeable} pointing
- * forward to the next tier's block (see {@code Machine}/{@code Factory}/{@code MekanismBlockTypes}),
- * since that wiring is what {@code ItemTierInstaller#useOn} itself relies on to function at all. This
- * makes the family purely a property of that chain, so it groups correctly even for addon Factory
- * types that don't reuse (or extend) Mekanism's own {@code FactoryType} enum at all - e.g. an addon's
- * "Oxidizing Factory" family, which has no {@code FactoryType.OXIDIZING} to key off of.
+ * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, based on the recipe
+ * type a Factory (or its single-machine counterpart) processes, e.g. Smelting, Crushing,
+ * Enriching. Every mod in this ecosystem exposes that concept via a small, structurally identical
+ * pattern: a Mekanism {@link Attribute} on the block whose accessor returns some {@code *FactoryType}
+ * enum implementing {@link IHasTranslationKey} with a {@code getBaseBlock()} method pointing back
+ * at the "root" (Basic-tier) block of that family. Mekanism itself uses
+ * {@code AttributeFactoryType}/{@code FactoryType} for this; addons that don't literally reuse
+ * those base classes (e.g. EvolvedMekanismExtras' {@code EMExtraAttributeFactoryType}/
+ * {@code EMExtraFactoryType}) still follow the exact same shape because they mirror Mekanism's own
+ * convention. Detecting the pattern structurally (by method shape, not by hardcoding any of these
+ * class names) means every mod's variant of e.g. the Smelting line -- with its own,
+ * otherwise-unconnected tier ladder -- lands in one shared sort family, ordered purely by its
+ * processing Lines count (ascending). No addon-specific handling is required; any future addon
+ * following the same convention is picked up automatically.
+ *
+ * <p>Addons with no such attribute at all (e.g. Astral Mekanism, which only tags its machines with
+ * a plain tier attribute and never exposes a FactoryType-shaped concept) cannot be grouped by this
+ * mechanism, since there is no shared, reflectable signal to key off -- those items simply fall
+ * back to the terminal's normal name/mod sort (or to {@link AstralMekanismFamilyResolver}'s
+ * explicit carve-out).
  */
 public final class FactoryFamilyResolver {
 
     private FactoryFamilyResolver() {
     }
 
-    /** block -> the next tier's block it upgrades into, per {@link AttributeUpgradeable}. */
-    private static Map<Block, Block> forwardChain;
-    /** block -> the previous tier's block that upgrades into it (the reverse of {@link #forwardChain}). */
-    private static Map<Block, Block> reverseChain;
-
-    /**
-     * Returns the family identity for {@code key}, or {@code null} if its block is not part of any
-     * Tier Installer upgrade chain.
-     */
     @Nullable
     public static SortFamily resolve(AEKey key) {
         Block block = blockOf(key);
         if (block == null) {
             return null;
         }
-        buildChainIndexIfNeeded();
-        if (!forwardChain.containsKey(block) && !reverseChain.containsKey(block)) {
-            return null;
+        // Unlike Forge's Mekanism API (whose Attribute.getAll accepts a plain Block), NeoForge's
+        // Mekanism API only exposes Attribute.getAll(Holder<Block>); the vanilla built-in registry
+        // holder is the loader-agnostic way to get one for any registered block.
+        for (Attribute attr : Attribute.getAll(block.builtInRegistryHolder())) {
+            SortFamily family = tryResolveFromAttribute(block, attr);
+            if (family != null) {
+                return family;
+            }
         }
-        // Guard against a malformed (e.g. addon-induced) cycle in the upgrade graph, which would
-        // otherwise hang the render thread in an infinite loop while trying to find a root/end.
-        Set<Block> visited = new HashSet<>();
-        Block root = block;
-        while (reverseChain.containsKey(root) && visited.add(root)) {
-            root = reverseChain.get(root);
-        }
-        List<Block> chain = new ArrayList<>();
-        chain.add(root);
-        visited.clear();
-        Block cur = root;
-        while (forwardChain.containsKey(cur) && visited.add(cur)) {
-            cur = forwardChain.get(cur);
-            chain.add(cur);
-        }
-        int rank = chain.indexOf(block);
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(root);
-        String name = root.asItem().getDescription().getString();
-        return new SortFamily(name, id.getNamespace(), rank);
+        return null;
     }
 
-    private static void buildChainIndexIfNeeded() {
-        if (forwardChain != null) {
-            return;
-        }
-        Map<Block, Block> forward = new HashMap<>();
-        Map<Block, Block> reverse = new HashMap<>();
-        for (Block block : BuiltInRegistries.BLOCK) {
-            Block target;
-            AttributeUpgradeable upgradeable = Attribute.get(block, AttributeUpgradeable.class);
-            if (upgradeable != null) {
-                // Standard Mekanism upgrade chain.
-                try {
-                    target = upgradeable.upgradeResult(block.defaultBlockState(), BaseTier.BASIC).getBlock();
-                } catch (NullPointerException e) {
-                    continue;
-                }
-            } else {
-                // Addon mods (MekanismExtras, EvolvedMekanismExtras, etc.) use their own
-                // attribute class with an upgradeBlock supplier.
-                target = getAddonUpgradeTarget(block);
-                if (target == null) {
-                    continue;
-                }
-            }
-            if (target == block) {
-                continue;
-            }
-            // Guard against back-edges (e.g. stray AttributeUpgradeable pointing to Basic on the
-            // highest tier's block) — a valid edge must move to a strictly higher rank.
-            if (effectiveTierRank(target) <= effectiveTierRank(block)) {
-                continue;
-            }
-            forward.put(block, target);
-            reverse.put(target, block);
-        }
-        forwardChain = forward;
-        reverseChain = reverse;
-    }
-
-    /**
-     * Returns the tier rank used for upgrade-chain edge validation.
-     * Standard Mekanism blocks use their {@link BaseTier} ordinal; addon blocks that don't expose a
-     * standard {@link BaseTier} fall back to their {@code processes} count as a rank proxy.
-     */
-    private static int effectiveTierRank(Block block) {
-        BaseTier tier = Attribute.getBaseTier(block.builtInRegistryHolder());
-        if (tier != null) {
-            return TierRank.of(tier);
-        }
-        Integer processes = FactoryLinesHelper.getLinesForBlock(block);
-        return processes != null ? processes : -1;
-    }
-
-    /**
-     * Attempts to find the upgrade-target block for addon mods that use a custom upgradeable
-     * attribute (not Mekanism's {@link AttributeUpgradeable}). Looks for any attribute on the block
-     * that exposes an {@code upgradeBlock} supplier — either as a record accessor (public method) or
-     * as a field — then calls the supplier to obtain the target {@link Block}.
-     */
     @Nullable
-    private static Block getAddonUpgradeTarget(Block block) {
-        if (!(block instanceof ITypeBlock typeBlock)) {
-            return null;
-        }
-        for (var attr : typeBlock.getType().getAll()) {
-            if (attr instanceof AttributeUpgradeable) {
+    private static SortFamily tryResolveFromAttribute(Block block, Attribute attr) {
+        for (Method method : attr.getClass().getMethods()) {
+            if (method.getParameterCount() != 0 || method.getReturnType() == void.class) {
                 continue;
             }
+            Class<?> returnType = method.getReturnType();
+            if (!returnType.getSimpleName().endsWith("FactoryType") || !IHasTranslationKey.class.isAssignableFrom(returnType)) {
+                continue;
+            }
+            Object factoryType;
             try {
-                Supplier<?> supplier = getUpgradeBlockSupplier(attr);
-                if (supplier == null) {
-                    continue;
-                }
-                Object regObj = supplier.get();
-                if (regObj == null) {
-                    continue;
-                }
-                Method getBlock = regObj.getClass().getMethod("get");
-                Object result = getBlock.invoke(regObj);
-                if (result instanceof Block target) {
-                    return target;
-                }
-            } catch (ReflectiveOperationException | ClassCastException e) {
-                // not an upgradeable attribute
+                factoryType = method.invoke(attr);
+            } catch (ReflectiveOperationException e) {
+                continue;
             }
+            if (factoryType == null) {
+                continue;
+            }
+            Block baseBlock = extractBaseBlock(factoryType);
+            if (baseBlock == null) {
+                continue;
+            }
+            Integer lines = FactoryLinesHelper.getLinesForBlock(block);
+            if (lines == null) {
+                continue;
+            }
+            String name = Component.translatable(((IHasTranslationKey) factoryType).getTranslationKey()).getString();
+            ResourceLocation baseBlockId = BuiltInRegistries.BLOCK.getKey(baseBlock);
+            return new SortFamily(name, baseBlockId.getNamespace(), lines);
         }
         return null;
     }
 
     /**
-     * Retrieves the {@code upgradeBlock} supplier from a custom upgradeable attribute via reflection,
-     * supporting both record-accessor style (public {@code upgradeBlock()} method) and field style
-     * (private {@code upgradeBlock} field).
+     * Reads the {@code getBaseBlock()} accessor every {@code *FactoryType} enum in this ecosystem
+     * exposes, and unwraps its result down to a concrete {@link Block}. Forge's Mekanism API returns
+     * an {@link IBlockProvider} there; NeoForge's returns a {@code BlockRegistryObject} (a
+     * {@code DeferredHolder} wrapper) instead, so both {@code getBlock()} (Forge) and
+     * {@code get()}/{@code value()} (NeoForge's {@code DeferredHolder}) accessors are tried via
+     * reflection rather than hardcoding either loader's wrapper type. A plain {@link Block} result is
+     * also accepted directly. Returns {@code null} on any shape mismatch.
      */
     @Nullable
-    @SuppressWarnings("unchecked")
-    private static Supplier<?> getUpgradeBlockSupplier(Object attr) {
+    private static Block extractBaseBlock(Object factoryType) {
+        Object result;
         try {
-            Method m = attr.getClass().getMethod("upgradeBlock");
-            return (Supplier<?>) m.invoke(attr);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            // not a public record accessor
+            Method getBaseBlock = factoryType.getClass().getMethod("getBaseBlock");
+            result = getBaseBlock.invoke(factoryType);
+        } catch (ReflectiveOperationException e) {
+            return null;
         }
-        try {
-            Field f = attr.getClass().getDeclaredField("upgradeBlock");
-            f.setAccessible(true);
-            return (Supplier<?>) f.get(attr);
-        } catch (ReflectiveOperationException | ClassCastException e) {
-            // no upgradeBlock field
+        if (result instanceof Block block) {
+            return block;
+        }
+        if (result instanceof IBlockProvider provider) {
+            return provider.getBlock();
+        }
+        for (String accessor : new String[] {"getBlock", "get", "value"}) {
+            try {
+                Method unwrap = result.getClass().getMethod(accessor);
+                Object unwrapped = unwrap.invoke(result);
+                if (unwrapped instanceof Block block) {
+                    return block;
+                }
+            } catch (ReflectiveOperationException e) {
+                // try the next accessor name
+            }
         }
         return null;
     }
 
     @Nullable
-    private static Block blockOf(AEKey key) {
+    static Block blockOf(AEKey key) {
         if (!(key instanceof AEItemKey itemKey)) {
             return null;
         }
