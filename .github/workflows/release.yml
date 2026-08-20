@@ -1,9 +1,11 @@
 name: Release
 
+# Runs on every push to main (e.g. a merged release/vX.Y.Z PR), building all loaders and
+# publishing a GitHub Release for the version currently set in gradle.properties.
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
   contents: write
@@ -75,7 +77,10 @@ jobs:
 
       - name: Build all loaders
         if: steps.tag_check.outputs.exists == 'false'
-        run: ./gradlew build --console=plain
+        # neoforge2612 is intentionally excluded: Mekanism has no release for NeoForge 26.1.2 yet,
+        # so its module still has a TODO Mekanism version and cannot compile the shared common
+        # sources. Only build the loaders that are actually shipped.
+        run: ./gradlew :forge:build :neoforge:build --console=plain
 
       - name: Verify expected release jars
         if: steps.tag_check.outputs.exists == 'false'
@@ -178,7 +183,7 @@ jobs:
       #     dependencies: mekanism(required)
       #     fail-mode: warn
 
-      - name: Create master to develop sync PR
+      - name: Create main to develop sync PR
         if: always()
         uses: actions/github-script@v9.0.0
         with:
@@ -188,7 +193,7 @@ jobs:
             const repo = context.repo.repo;
 
             // NOTE: PRs/reviews created here use the default GITHUB_TOKEN, so this event does
-            // NOT trigger other workflows (e.g. pr-flow-policy.yml's approve-master-to-develop
+            // NOT trigger other workflows (e.g. pr-flow-policy.yml's approve-main-to-develop
             // job) due to GitHub's loop-prevention rule for GITHUB_TOKEN-authored events.
             // Approve + merge the sync PR directly in this same job instead of relying on that
             // workflow to react to it.
@@ -196,7 +201,7 @@ jobs:
               owner,
               repo,
               state: 'open',
-              head: `${owner}:master`,
+              head: `${owner}:main`,
               base: 'develop',
             });
 
@@ -208,13 +213,13 @@ jobs:
               const { data: created } = await github.rest.pulls.create({
                 owner,
                 repo,
-                title: 'chore: sync master to develop',
-                head: 'master',
+                title: 'chore: sync main to develop',
+                head: 'main',
                 base: 'develop',
                 body: [
-                  '## Sync master → develop',
+                  '## Sync main → develop',
                   '',
-                  'This PR was created automatically by the release workflow to sync master back to develop.',
+                  'This PR was created automatically by the release workflow to sync main back to develop.',
                   '',
                   ':dependabot: This PR was prepared by GitHub Copilot',
                 ].join('\n'),
@@ -247,7 +252,7 @@ jobs:
                   body: [
                     'Auto-approved by repository policy.',
                     '',
-                    '- This is an allowed synchronization PR: `master -> develop`.',
+                    '- This is an allowed synchronization PR: `main -> develop`.',
                   ].join('\n'),
                 });
               } catch (error) {

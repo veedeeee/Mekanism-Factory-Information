@@ -9,7 +9,7 @@ on:
       base:
         description: 'Target branch (base)'
         required: false
-        default: 'master'
+        default: 'main'
       title:
         description: 'PR title'
         required: true
@@ -38,7 +38,7 @@ jobs:
             const head = process.env.PR_HEAD;
             const title = process.env.PR_TITLE;
             const body = process.env.PR_BODY || ':dependabot: This PR was prepared by GitHub Copilot';
-            const base = process.env.PR_BASE || 'master';
+            const base = process.env.PR_BASE || 'main';
 
             const { data: prs } = await github.rest.pulls.list({
               owner: context.repo.owner,

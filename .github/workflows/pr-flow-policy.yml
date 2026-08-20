@@ -13,11 +13,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  deny-develop-to-master:
-    if: ${{ github.event.pull_request.base.ref == 'master' && github.event.pull_request.head.ref == 'develop' && github.event.pull_request.head.repo.full_name == github.repository }}
+  deny-develop-to-main:
+    if: ${{ github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'develop' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - name: Deny direct develop to master PR
+      - name: Deny direct develop to main PR
         uses: actions/github-script@v9.0.0
         with:
           script: |
@@ -28,8 +28,8 @@ jobs:
             const body = [
               'This PR is denied automatically by repository policy.',
               '',
-              '- Direct `develop -> master` pull requests are not allowed.',
-              '- Please create a `release/*` branch from `develop`, then open `release/* -> master`.',
+              '- Direct `develop -> main` pull requests are not allowed.',
+              '- Please create a `release/*` branch from `develop`, then open `release/* -> main`.',
               '',
               'If this was opened by mistake, this PR has been closed automatically.'
             ].join('\n');
@@ -60,11 +60,11 @@ jobs:
               state: 'closed',
             });
 
-  approve-master-to-develop:
-    if: ${{ github.event.pull_request.base.ref == 'develop' && github.event.pull_request.head.ref == 'master' && github.event.pull_request.head.repo.full_name == github.repository }}
+  approve-main-to-develop:
+    if: ${{ github.event.pull_request.base.ref == 'develop' && github.event.pull_request.head.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
-      - name: Auto approve master to develop PR
+      - name: Auto approve main to develop PR
         uses: actions/github-script@v9.0.0
         with:
           script: |
@@ -97,14 +97,14 @@ jobs:
                 body: [
                   'Auto-approved by repository policy.',
                   '',
-                  '- This is an allowed synchronization PR: `master -> develop`.',
+                  '- This is an allowed synchronization PR: `main -> develop`.',
                 ].join('\n'),
               });
             } catch (error) {
               core.warning(`Failed to auto-approve PR: ${error.message}`);
             }
 
-      - name: Auto merge master to develop PR
+      - name: Auto merge main to develop PR
         uses: actions/github-script@v9.0.0
         with:
           script: |
