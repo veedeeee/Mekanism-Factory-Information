@@ -1,5 +1,7 @@
 name: Release
 
+# Runs on every push to main (e.g. a merged release/vX.Y.Z PR), building all loaders and
+# publishing a GitHub Release for the version currently set in gradle.properties.
 on:
   push:
     branches:
