@@ -49,13 +49,12 @@ public final class FactoryLinesHelper {
         // Addon mods (MekanismExtras, EvolvedMekanismExtras, Astral Mekanism, etc.) use their own
         // factory BE classes that extend TileEntityConfigurableMachine with a public `tier` field
         // whose type has a public int `processes` field — same structural convention, different types.
-        // Any other block entity built on this same shared Mekanism base class (used across the whole
-        // ecosystem for single-recipe, energy-driven processing machines, as opposed to Tanks/Cables/
-        // Pipes) is -- by construction -- a genuine single processing line, whether or not it happens
-        // to also expose the (unrelated) Tier Installer upgrade mechanic.
+        // This same shared Mekanism base class is also used by non-Factory tiered devices (Chemical
+        // Tank, Energy Cube) that have no processes/Lines concept at all, so a missing `processes`
+        // field here means "not a Factory-like device", not "a single-line machine" — fall through
+        // instead of guessing SINGLE_MACHINE_LINES.
         if (blockEntity instanceof TileEntityConfigurableMachine) {
-            Integer lines = getProcessesFromBE(blockEntity);
-            return lines != null ? lines : SINGLE_MACHINE_LINES;
+            return getProcessesFromBE(blockEntity);
         }
         if (hasUpgradeableAttribute(state.getBlockHolder().value()) && !hasAnyTierAttribute(state.getBlockHolder().value())) {
             return SINGLE_MACHINE_LINES;
@@ -97,19 +96,18 @@ public final class FactoryLinesHelper {
     }
 
     /**
-     * {@code BlockEntity}-only counterpart to {@link #getLinesForBlock(Block)}: recognizes any block
-     * entity built on Mekanism's shared {@link TileEntityConfigurableMachine} base class (used across
-     * the whole ecosystem for single-recipe, energy-driven processing machines, as opposed to
-     * Tanks/Cables/Pipes) as a genuine processing-line machine, regardless of whether it also exposes
-     * the (unrelated) Tier Installer upgrade mechanic. Intended for callers that can only obtain a
-     * throwaway/dummy block entity (no live world), e.g. via Mekanism's own
+     * {@code BlockEntity}-only counterpart to {@link #getLinesForBlock(Block)}: reads an addon
+     * Factory's processes count off any block entity built on Mekanism's shared
+     * {@link TileEntityConfigurableMachine} base class (used across the whole ecosystem for
+     * single-recipe, energy-driven processing machines, as opposed to Tanks/Energy Cubes, which have
+     * no processes field and correctly yield {@code null} here). Intended for callers that can only
+     * obtain a throwaway/dummy block entity (no live world), e.g. via Mekanism's own
      * {@code IHasTileEntity#createDummyBlockEntity()}.
      */
     @Nullable
     public static Integer getLinesForBlockEntity(@Nullable BlockEntity blockEntity) {
         if (blockEntity instanceof TileEntityConfigurableMachine) {
-            Integer lines = getProcessesFromBE(blockEntity);
-            return lines != null ? lines : SINGLE_MACHINE_LINES;
+            return getProcessesFromBE(blockEntity);
         }
         return null;
     }
