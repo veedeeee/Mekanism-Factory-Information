@@ -2,20 +2,25 @@ package wtf.vd.mekfactoryinfo.neoforge.compat.ae2;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import mekanism.api.tier.BaseTier;
 import mekanism.common.block.attribute.Attribute;
 import mekanism.common.block.attribute.AttributeUpgradeable;
+import mekanism.common.block.interfaces.ITypeBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
+import wtf.vd.mekfactoryinfo.compat.mekanism.FactoryLinesHelper;
 
 /**
  * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, by walking the block's
@@ -81,33 +86,28 @@ public final class FactoryFamilyResolver {
         Map<Block, Block> forward = new HashMap<>();
         Map<Block, Block> reverse = new HashMap<>();
         for (Block block : BuiltInRegistries.BLOCK) {
-            AttributeUpgradeable upgradeable = Attribute.get(block, AttributeUpgradeable.class);
-            if (upgradeable == null) {
-                continue;
-            }
-            // The tier argument is unused by every known AttributeUpgradeable implementation (it just
-            // resolves its own fixed upgrade target block), so any BaseTier value works here. The
-            // highest tier of a chain (e.g. Ultimate/Creative Energy Cube/Bin/Tank) is registered with
-            // a literal null upgrade-target supplier rather than one that returns null, which NPEs
-            // inside upgradeResult itself - that's expected here and simply means "no forward edge".
             Block target;
-            try {
-                target = upgradeable.upgradeResult(block.defaultBlockState(), BaseTier.BASIC).getBlock();
-            } catch (NullPointerException e) {
-                continue;
+            AttributeUpgradeable upgradeable = Attribute.get(block, AttributeUpgradeable.class);
+            if (upgradeable != null) {
+                // Standard Mekanism upgrade chain.
+                try {
+                    target = upgradeable.upgradeResult(block.defaultBlockState(), BaseTier.BASIC).getBlock();
+                } catch (NullPointerException e) {
+                    continue;
+                }
+            } else {
+                // Addon mods (MekanismExtras, EvolvedMekanismExtras, etc.) use their own
+                // attribute class with an upgradeBlock supplier.
+                target = getAddonUpgradeTarget(block);
+                if (target == null) {
+                    continue;
+                }
             }
             if (target == block) {
                 continue;
             }
-            // Guard against Mekanism's own leftover default AttributeUpgradeable: Machine.FactoryMachine
-            // unconditionally sets "upgrade to Basic" for every Factory tier's blocktype before Factory's
-            // constructor overwrites it with the real "upgrade to next tier" edge for every tier except
-            // the last (see Factory.java: "tier.ordinal() < FACTORY_TIERS.length - 1") - so the highest
-            // Factory tier (e.g. Ultimate) keeps a stray edge pointing BACK to Basic, which would
-            // otherwise form a cycle (Basic -> Advanced -> Elite -> Ultimate -> Basic) and corrupt every
-            // tier's family resolution. A valid upgrade edge must always move to a strictly higher tier
-            // (or from an untiered base machine, rank -1, to the lowest tier), so any edge that doesn't
-            // is rejected here rather than trusted blindly.
+            // Guard against back-edges (e.g. stray AttributeUpgradeable pointing to Basic on the
+            // highest tier's block) — a valid edge must move to a strictly higher rank.
             if (effectiveTierRank(target) <= effectiveTierRank(block)) {
                 continue;
             }
@@ -119,12 +119,77 @@ public final class FactoryFamilyResolver {
     }
 
     /**
-     * The block's own {@link BaseTier} rank (see {@link TierRank}), or {@code -1} if it has no
-     * {@code AttributeTier} at all (e.g. a regular, non-Factory base machine).
+     * Returns the tier rank used for upgrade-chain edge validation.
+     * Standard Mekanism blocks use their {@link BaseTier} ordinal; addon blocks that don't expose a
+     * standard {@link BaseTier} fall back to their {@code processes} count as a rank proxy.
      */
     private static int effectiveTierRank(Block block) {
         BaseTier tier = Attribute.getBaseTier(block.builtInRegistryHolder());
-        return tier == null ? -1 : TierRank.of(tier);
+        if (tier != null) {
+            return TierRank.of(tier);
+        }
+        Integer processes = FactoryLinesHelper.getLinesForBlock(block);
+        return processes != null ? processes : -1;
+    }
+
+    /**
+     * Attempts to find the upgrade-target block for addon mods that use a custom upgradeable
+     * attribute (not Mekanism's {@link AttributeUpgradeable}). Looks for any attribute on the block
+     * that exposes an {@code upgradeBlock} supplier — either as a record accessor (public method) or
+     * as a field — then calls the supplier to obtain the target {@link Block}.
+     */
+    @Nullable
+    private static Block getAddonUpgradeTarget(Block block) {
+        if (!(block instanceof ITypeBlock typeBlock)) {
+            return null;
+        }
+        for (var attr : typeBlock.getType().getAll()) {
+            if (attr instanceof AttributeUpgradeable) {
+                continue;
+            }
+            try {
+                Supplier<?> supplier = getUpgradeBlockSupplier(attr);
+                if (supplier == null) {
+                    continue;
+                }
+                Object regObj = supplier.get();
+                if (regObj == null) {
+                    continue;
+                }
+                Method getBlock = regObj.getClass().getMethod("get");
+                Object result = getBlock.invoke(regObj);
+                if (result instanceof Block target) {
+                    return target;
+                }
+            } catch (ReflectiveOperationException | ClassCastException e) {
+                // not an upgradeable attribute
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves the {@code upgradeBlock} supplier from a custom upgradeable attribute via reflection,
+     * supporting both record-accessor style (public {@code upgradeBlock()} method) and field style
+     * (private {@code upgradeBlock} field).
+     */
+    @Nullable
+    @SuppressWarnings("unchecked")
+    private static Supplier<?> getUpgradeBlockSupplier(Object attr) {
+        try {
+            Method m = attr.getClass().getMethod("upgradeBlock");
+            return (Supplier<?>) m.invoke(attr);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            // not a public record accessor
+        }
+        try {
+            Field f = attr.getClass().getDeclaredField("upgradeBlock");
+            f.setAccessible(true);
+            return (Supplier<?>) f.get(attr);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            // no upgradeBlock field
+        }
+        return null;
     }
 
     @Nullable

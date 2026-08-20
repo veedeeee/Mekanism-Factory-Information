@@ -5,6 +5,9 @@ import appeng.api.config.SortOrder;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import java.util.Comparator;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -44,6 +47,14 @@ public final class FactoryLinesGroupingComparators {
         SortFamily family = FactoryFamilyResolver.resolve(key);
         if (family != null) {
             return family;
+        }
+        Block block = FactoryFamilyResolver.blockOf(key);
+        if (block != null) {
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(block);
+            SortFamily astralFamily = AstralMekanismFamilyResolver.resolve(block, blockId);
+            if (astralFamily != null) {
+                return astralFamily;
+            }
         }
         if (key instanceof AEItemKey itemKey) {
             return TieredItemFamilyResolver.resolve(itemKey.getItem());

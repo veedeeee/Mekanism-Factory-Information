@@ -2,33 +2,43 @@ package wtf.vd.mekfactoryinfo.forge.compat.ae2;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import mekanism.api.tier.BaseTier;
+import java.lang.reflect.Method;
+import mekanism.api.providers.IBlockProvider;
+import mekanism.api.text.IHasTranslationKey;
 import mekanism.common.block.attribute.Attribute;
-import mekanism.common.block.attribute.AttributeTier;
-import mekanism.common.block.attribute.AttributeUpgradeable;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
+import wtf.vd.mekfactoryinfo.compat.mekanism.FactoryLinesHelper;
 
 /**
- * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, by walking the block's
- * Tier Installer upgrade chain ({@link AttributeUpgradeable}).
+ * Resolves the Mekanism machine family (if any) that an AE2 key belongs to, based on the recipe
+ * type a Factory (or its single-machine counterpart) processes, e.g. Smelting, Crushing,
+ * Enriching. Every mod in this ecosystem exposes that concept via a small, structurally identical
+ * pattern: a Mekanism {@link Attribute} on the block whose accessor returns some {@code *FactoryType}
+ * enum implementing {@link IHasTranslationKey} with a {@code getBaseBlock()} method pointing back
+ * at the "root" (Basic-tier) block of that family. Mekanism itself uses
+ * {@code AttributeFactoryType}/{@code FactoryType} for this; addons that don't literally reuse
+ * those base classes (e.g. EvolvedMekanismExtras' {@code EMExtraAttributeFactoryType}/
+ * {@code EMExtraFactoryType}) still follow the exact same shape because they mirror Mekanism's own
+ * convention. Detecting the pattern structurally (by method shape, not by hardcoding any of these
+ * class names) means every mod's variant of e.g. the Smelting line -- with its own,
+ * otherwise-unconnected tier ladder -- lands in one shared sort family, ordered purely by its
+ * processing Lines count (ascending). No addon-specific handling is required; any future addon
+ * following the same convention is picked up automatically.
+ *
+ * <p>Addons with no such attribute at all (e.g. Astral Mekanism, which only tags its machines with
+ * a plain tier attribute and never exposes a FactoryType-shaped concept) cannot be grouped by this
+ * mechanism, since there is no shared, reflectable signal to key off -- those items simply fall
+ * back to the terminal's normal name/mod sort.
  */
 public final class FactoryFamilyResolver {
 
     private FactoryFamilyResolver() {
     }
-
-    private static Map<Block, Block> forwardChain;
-    private static Map<Block, Block> reverseChain;
 
     @Nullable
     public static SortFamily resolve(AEKey key) {
@@ -36,67 +46,75 @@ public final class FactoryFamilyResolver {
         if (block == null) {
             return null;
         }
-        buildChainIndexIfNeeded();
-        if (!forwardChain.containsKey(block) && !reverseChain.containsKey(block)) {
-            return null;
-        }
-        Set<Block> visited = new HashSet<>();
-        Block root = block;
-        while (reverseChain.containsKey(root) && visited.add(root)) {
-            root = reverseChain.get(root);
-        }
-        List<Block> chain = new ArrayList<>();
-        chain.add(root);
-        visited.clear();
-        Block cur = root;
-        while (forwardChain.containsKey(cur) && visited.add(cur)) {
-            cur = forwardChain.get(cur);
-            chain.add(cur);
-        }
-        int rank = chain.indexOf(block);
-        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(root);
-        String name = root.asItem().getDescription().getString();
-        return new SortFamily(name, id.getNamespace(), rank);
-    }
-
-    private static void buildChainIndexIfNeeded() {
-        if (forwardChain != null) {
-            return;
-        }
-        Map<Block, Block> forward = new HashMap<>();
-        Map<Block, Block> reverse = new HashMap<>();
-        for (Block block : BuiltInRegistries.BLOCK) {
-            AttributeUpgradeable upgradeable = Attribute.get(block, AttributeUpgradeable.class);
-            if (upgradeable == null) {
-                continue;
+        for (Attribute attr : Attribute.getAll(block)) {
+            SortFamily family = tryResolveFromAttribute(block, attr);
+            if (family != null) {
+                return family;
             }
-            Block target;
-            try {
-                target = upgradeable.upgradeResult(block.defaultBlockState(), BaseTier.BASIC).getBlock();
-            } catch (NullPointerException e) {
-                continue;
-            }
-            if (target == block) {
-                continue;
-            }
-            if (effectiveTierRank(target) <= effectiveTierRank(block)) {
-                continue;
-            }
-            forward.put(block, target);
-            reverse.put(target, block);
         }
-        forwardChain = forward;
-        reverseChain = reverse;
-    }
-
-    private static int effectiveTierRank(Block block) {
-        AttributeTier<?> tierAttr = Attribute.get(block, AttributeTier.class);
-        BaseTier tier = tierAttr == null ? null : tierAttr.tier().getBaseTier();
-        return tier == null ? -1 : TierRank.of(tier);
+        return null;
     }
 
     @Nullable
-    private static Block blockOf(AEKey key) {
+    private static SortFamily tryResolveFromAttribute(Block block, Attribute attr) {
+        for (Method method : attr.getClass().getMethods()) {
+            if (method.getParameterCount() != 0 || method.getReturnType() == void.class) {
+                continue;
+            }
+            Class<?> returnType = method.getReturnType();
+            if (!returnType.getSimpleName().endsWith("FactoryType") || !IHasTranslationKey.class.isAssignableFrom(returnType)) {
+                continue;
+            }
+            Object factoryType;
+            try {
+                factoryType = method.invoke(attr);
+            } catch (ReflectiveOperationException e) {
+                continue;
+            }
+            if (factoryType == null) {
+                continue;
+            }
+            Block baseBlock = extractBaseBlock(factoryType);
+            if (baseBlock == null) {
+                continue;
+            }
+            Integer lines = FactoryLinesHelper.getLinesForBlock(block);
+            if (lines == null) {
+                continue;
+            }
+            String name = Component.translatable(((IHasTranslationKey) factoryType).getTranslationKey()).getString();
+            ResourceLocation baseBlockId = BuiltInRegistries.BLOCK.getKey(baseBlock);
+            return new SortFamily(name, baseBlockId.getNamespace(), lines);
+        }
+        return null;
+    }
+
+    /**
+     * Reads the {@code getBaseBlock()} accessor every {@code *FactoryType} enum in this ecosystem
+     * exposes, and unwraps its result (typically an {@link IBlockProvider}, but a plain
+     * {@link Block} is also accepted) down to a concrete {@link Block}. Returns {@code null} on any
+     * shape mismatch.
+     */
+    @Nullable
+    private static Block extractBaseBlock(Object factoryType) {
+        Object result;
+        try {
+            Method getBaseBlock = factoryType.getClass().getMethod("getBaseBlock");
+            result = getBaseBlock.invoke(factoryType);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+        if (result instanceof IBlockProvider provider) {
+            return provider.getBlock();
+        }
+        if (result instanceof Block block) {
+            return block;
+        }
+        return null;
+    }
+
+    @Nullable
+    static Block blockOf(AEKey key) {
         if (!(key instanceof AEItemKey itemKey)) {
             return null;
         }
