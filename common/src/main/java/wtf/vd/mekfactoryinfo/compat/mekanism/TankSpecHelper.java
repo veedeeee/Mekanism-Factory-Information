@@ -34,21 +34,41 @@ public final class TankSpecHelper {
 
     /**
      * Returns the current storage spec for the given block state, or {@code null} if it isn't a
-     * Mekanism Fluid Tank, Chemical Tank, or Energy Cube.
+     * Mekanism Fluid Tank, Chemical Tank, or Energy Cube. Reads the tier enum's stock storage/output;
+     * prefer {@link #getCurrentSpec(BlockState, Long)} when a live storage value is available, since
+     * addon mods can report a different live storage capacity than the (possibly reused) tier enum.
      */
     @Nullable
     public static TankSpec getCurrentSpec(BlockState state) {
+        return getCurrentSpec(state, null);
+    }
+
+    /**
+     * Variant of {@link #getCurrentSpec(BlockState)} that accepts an already-read live storage value
+     * (e.g. from the placed tank/container's own {@code getCapacity()}/{@code getMaxEnergy()}, read
+     * by loader-specific code -- see each provider's {@code readLiveStorage}) to use instead of the
+     * tier enum's stock value, when available. This is what lets addon mods that report a different
+     * live capacity than their (possibly reused) tier enum be reflected correctly, without any
+     * mod-specific handling here. The output rate has no equivalent generic accessor in Mekanism's
+     * tile entity base class (it's read from the tier inline at use), so it always comes from the
+     * tier enum (best effort).
+     */
+    @Nullable
+    public static TankSpec getCurrentSpec(BlockState state, @Nullable Long liveStorage) {
         FluidTankTier fluidTier = TierAttributeHelper.getTierSafely(state.getBlockHolder(), FluidTankTier.class);
         if (fluidTier != null) {
-            return new TankSpec(fluidTier.getStorage(), fluidTier.getOutput());
+            long storage = liveStorage != null ? liveStorage : fluidTier.getStorage();
+            return new TankSpec(storage, fluidTier.getOutput());
         }
         ChemicalTankTier chemicalTier = TierAttributeHelper.getTierSafely(state.getBlockHolder(), ChemicalTankTier.class);
         if (chemicalTier != null) {
-            return new TankSpec(chemicalTier.getStorage(), chemicalTier.getOutput());
+            long storage = liveStorage != null ? liveStorage : chemicalTier.getStorage();
+            return new TankSpec(storage, chemicalTier.getOutput());
         }
         EnergyCubeTier energyTier = TierAttributeHelper.getTierSafely(state.getBlockHolder(), EnergyCubeTier.class);
         if (energyTier != null) {
-            return new TankSpec(energyTier.getMaxEnergy(), energyTier.getOutput());
+            long storage = liveStorage != null ? liveStorage : energyTier.getMaxEnergy();
+            return new TankSpec(storage, energyTier.getOutput());
         }
         return null;
     }

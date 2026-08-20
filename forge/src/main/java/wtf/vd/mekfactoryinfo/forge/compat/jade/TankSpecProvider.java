@@ -28,7 +28,7 @@ public enum TankSpecProvider implements IBlockComponentProvider {
     @Override
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
         BlockState state = accessor.getBlockState();
-        TankSpec current = TankSpecHelper.getCurrentSpec(state);
+        TankSpec current = TankSpecHelper.getCurrentSpec(state, accessor.getBlockEntity());
         if (current == null) {
             return;
         }
