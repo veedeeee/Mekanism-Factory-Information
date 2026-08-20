@@ -1,0 +1,51 @@
+
+Bird-view
+
++---
+| AE2 Area 
+| Creative Energy Cell + ME Drive + ME Controller + Fluix ME Glass Cable
+| Large Chest with all of blocks which will be placed in below Mekanism Area. Might be some qty of large chests.
+| Cable subparts and Items should be passed by /give:
+| - ME Crafting Terminal
+| - ME Pattern Encoding Terminal
+| - ME Import Bus
+| - ME Storage Bus
+| - 256k ME Item Storage Cell
+| - Fluix ME Glass Cable
++---
+
++---
+| Mekanism Area
+| Large Chests: Installers and Alloys from Mekanism and Add-ons
+| +---
+| | Smelter line: 
+| | Line 1: Mekanism: non-factory -> Basic -> Ultimate |
+| | Line 2: Mekanism universal cable: connect to same tier; Basic Universal Cable to Basic Smelting Factory
+| | Line 3... (3n)  : Air
+| | Line 4... (3n+1): Each add-on's smelters
+| | Line 5... (3n+2): Each add-on's universal cable, connect to same tier with smelter machines
+| +---
+| 
+| +---
+| | Energy Cube line:
+| | Line 1: Mekanism Energy Cubes, put the same tier of Universal Cable on the upper side
+| | Line 2... (2n)  : Air
+| | Line 3... (2n+1): Each add-on's cubes and cables
+| +---
+| 
+| +---
+| | Fluid Tank line:
+| | (Simular as Energy Cube. Fluid Tank + Mechanical Pipe)
+| +---
+| 
+| +---
+| | Chemical Tank line:
+| | (Simular as Energy Cube. Chemical Tank + Pressurized Tubes)
+| +---
+|
+| +---
+| | Thermodynamic Conductor line:
+| | Line 1: Mekanism conductors Basic->Ultimate
+| | Line 2: Each add-on's conductors
+| +---
++---

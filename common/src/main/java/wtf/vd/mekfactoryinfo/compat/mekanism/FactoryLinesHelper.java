@@ -1,12 +1,18 @@
 package wtf.vd.mekfactoryinfo.compat.mekanism;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Objects;
 import mekanism.api.tier.BaseTier;
 import mekanism.common.block.attribute.Attribute;
 import mekanism.common.block.attribute.AttributeTier;
 import mekanism.common.block.attribute.AttributeUpgradeable;
+import mekanism.common.block.interfaces.ITypeBlock;
 import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.FactoryTier;
 import mekanism.common.tile.factory.TileEntityFactory;
+import mekanism.common.tile.prefab.TileEntityConfigurableMachine;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -40,7 +46,17 @@ public final class FactoryLinesHelper {
             FactoryTier tier = factory.tier;
             return tier == null ? null : tier.processes;
         }
-        if (Attribute.has(state, AttributeUpgradeable.class)) {
+        // Addon mods (MekanismExtras, EvolvedMekanismExtras, Astral Mekanism, etc.) use their own
+        // factory BE classes that extend TileEntityConfigurableMachine with a public `tier` field
+        // whose type has a public int `processes` field — same structural convention, different types.
+        // This same shared Mekanism base class is also used by non-Factory tiered devices (Chemical
+        // Tank, Energy Cube) that have no processes/Lines concept at all, so a missing `processes`
+        // field here means "not a Factory-like device", not "a single-line machine" — fall through
+        // instead of guessing SINGLE_MACHINE_LINES.
+        if (blockEntity instanceof TileEntityConfigurableMachine) {
+            return getProcessesFromBE(blockEntity);
+        }
+        if (hasUpgradeableAttribute(state.getBlockHolder().value()) && !hasAnyTierAttribute(state.getBlockHolder().value())) {
             return SINGLE_MACHINE_LINES;
         }
         return null;
@@ -58,10 +74,104 @@ public final class FactoryLinesHelper {
         if (tier != null) {
             return tier.processes;
         }
-        if (Attribute.has(block, AttributeUpgradeable.class)) {
+        // Addon mods use custom Attribute subclasses (not AttributeTier) that are Java records with
+        // a tier() method; the tier object has a public int processes field.
+        if (block instanceof ITypeBlock typeBlock) {
+            for (Attribute attr : typeBlock.getType().getAll()) {
+                Integer lines = getProcessesFromAttribute(attr);
+                if (lines != null) {
+                    return lines;
+                }
+            }
+        }
+        // Same TileEntityConfigurableMachine recognition as getCurrentLines above, but without a live
+        // block entity to inspect. Loader-specific callers that have a way to build a throwaway
+        // block entity for this block (e.g. via Mekanism's own createDummyBlockEntity() mechanism)
+        // should call {@link #getLinesForBlockEntity(BlockEntity)} with it as an additional fallback;
+        // this method has no loader-agnostic way to construct one itself.
+        if (hasUpgradeableAttribute(block) && !hasAnyTierAttribute(block)) {
             return SINGLE_MACHINE_LINES;
         }
         return null;
+    }
+
+    /**
+     * {@code BlockEntity}-only counterpart to {@link #getLinesForBlock(Block)}: reads an addon
+     * Factory's processes count off any block entity built on Mekanism's shared
+     * {@link TileEntityConfigurableMachine} base class (used across the whole ecosystem for
+     * single-recipe, energy-driven processing machines, as opposed to Tanks/Energy Cubes, which have
+     * no processes field and correctly yield {@code null} here). Intended for callers that can only
+     * obtain a throwaway/dummy block entity (no live world), e.g. via Mekanism's own
+     * {@code IHasTileEntity#createDummyBlockEntity()}.
+     */
+    @Nullable
+    public static Integer getLinesForBlockEntity(@Nullable BlockEntity blockEntity) {
+        if (blockEntity instanceof TileEntityConfigurableMachine) {
+            return getProcessesFromBE(blockEntity);
+        }
+        return null;
+    }
+
+    /**
+     * Returns {@code true} if the block carries an upgrade-via-Tier-Installer attribute: the base
+     * {@link AttributeUpgradeable}, or an addon's custom equivalent (e.g. MekanismExtras'
+     * {@code ExtraAttributeUpgradeable}) -- detected structurally by declaring an
+     * {@code upgradeResult} method, the same convention the base attribute uses, rather than
+     * requiring the addon class to actually implement {@link AttributeUpgradeable}.
+     */
+    private static boolean hasUpgradeableAttribute(Block block) {
+        if (Attribute.has(block, AttributeUpgradeable.class)) {
+            return true;
+        }
+        if (block instanceof ITypeBlock typeBlock) {
+            for (Attribute attr : typeBlock.getType().getAll()) {
+                for (Method method : attr.getClass().getMethods()) {
+                    if (method.getName().equals("upgradeResult")) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the block already carries some other tier attribute (base
+     * {@link AttributeTier} or an addon's custom tier-carrying {@link Attribute}, e.g. a Fluid Tank's,
+     * Cable's, or Pipe's tier). Such blocks are themselves tiered storage/transmitter devices that
+     * happen to reuse the same {@code AttributeUpgradeable} upgrade mechanic as Factories -- they are
+     * <em>not</em> a plain single-line machine, so {@code SINGLE_MACHINE_LINES} must not apply to them.
+     * This guard is what makes it safe to register the Jade Factory Lines provider against a broad
+     * common ancestor block class that also covers Tanks/Energy Cubes (see
+     * {@code MekFactoryInfoJadePlugin}).
+     */
+    private static boolean hasAnyTierAttribute(Block block) {
+        if (Attribute.get(block, AttributeTier.class) != null) {
+            return true;
+        }
+        if (block instanceof ITypeBlock typeBlock) {
+            for (Attribute attr : typeBlock.getType().getAll()) {
+                if (getAddonTierObject(attr) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Attempts to read an addon's custom tier object off an {@link Attribute} via its {@code tier()}
+     * accessor (the same convention as {@link #getProcessesFromAttribute}), without requiring a
+     * {@code processes} field. Returns {@code null} on any mismatch.
+     */
+    @Nullable
+    private static Object getAddonTierObject(Attribute attr) {
+        try {
+            Method tierMethod = attr.getClass().getMethod("tier");
+            return tierMethod.invoke(attr);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
     }
 
     /**
@@ -73,9 +183,23 @@ public final class FactoryLinesHelper {
      */
     @Nullable
     public static Integer getPreviewLines(BlockState state, ItemStack heldItem) {
-        if (!(heldItem.getItem() instanceof ItemTierInstaller installer)) {
-            return null;
+        Item item = heldItem.getItem();
+        if (item instanceof ItemTierInstaller installer) {
+            return previewViaVanillaInstaller(state, installer);
         }
+        // Addon mods (MekanismExtras' ExtraItemTierInstaller, EvolvedMekanismExtras'
+        // EMExtraItemTierInstaller, and any similarly-shaped future addon) define their own,
+        // entirely separate Tier Installer item class and tier enum instead of reusing Mekanism's
+        // ItemTierInstaller/BaseTier -- but every one of them follows the exact same structural
+        // convention (a plain Item with a nullable getFromTier()/non-null getToTier(), an
+        // Attribute-shaped "upgradeResult(BlockState, tier)" method, and a "get*Tier()" one-level
+        // unwrap from the block's own tier attribute down to that same tier type), so this drives the
+        // identical preview purely via reflection instead of requiring an addon-specific mapping.
+        return previewViaAddonInstaller(state, item);
+    }
+
+    @Nullable
+    private static Integer previewViaVanillaInstaller(BlockState state, ItemTierInstaller installer) {
         AttributeUpgradeable upgradeable = Attribute.get(state, AttributeUpgradeable.class);
         if (upgradeable == null) {
             return null;
@@ -94,5 +218,139 @@ public final class FactoryLinesHelper {
         }
         FactoryTier afterTier = TierAttributeHelper.getTierSafely(upgraded.getBlockHolder(), FactoryTier.class);
         return afterTier == null ? null : afterTier.processes;
+    }
+
+    /**
+     * Reflective counterpart to {@link #previewViaVanillaInstaller} for addon Tier Installer items
+     * that don't extend {@link ItemTierInstaller} at all (see the class-level javadoc on
+     * {@link #getPreviewLines}). Returns {@code null} if {@code item} doesn't match the expected
+     * shape, or if the upgrade wouldn't apply to {@code state} (no-op, mirroring the vanilla path).
+     */
+    @Nullable
+    private static Integer previewViaAddonInstaller(BlockState state, Item item) {
+        BlockState upgraded = previewAddonInstallerUpgrade(state, item);
+        return upgraded == null ? null : getLinesForBlock(upgraded.getBlockHolder().value());
+    }
+
+    /**
+     * Reflective resolution of what an addon Tier Installer item (see {@link #previewViaAddonInstaller})
+     * would upgrade {@code state} to, without assuming anything about what kind of block it targets --
+     * shared by {@link #previewViaAddonInstaller} (Factories) and {@code TankSpecHelper}'s equivalent
+     * preview (Tanks/Energy Cubes, which reuse this exact same {@code ExtraAttributeUpgradeable}-shaped
+     * mechanic per MekanismExtras' own block registration). Returns {@code null} if {@code item}
+     * doesn't match the expected addon Tier Installer shape, or the upgrade wouldn't apply to
+     * {@code state} (no-op, mirroring the vanilla path).
+     */
+    @Nullable
+    static BlockState previewAddonInstallerUpgrade(BlockState state, Item item) {
+        Object toTier = tryInvoke(item, "getToTier");
+        if (toTier == null) {
+            return null;
+        }
+        Object fromTier = tryInvoke(item, "getFromTier");
+        Block block = state.getBlockHolder().value();
+        if (!(block instanceof ITypeBlock typeBlock)) {
+            return null;
+        }
+        Object currentTier = currentAddonTierOfClass(typeBlock, toTier.getClass());
+        if (!Objects.equals(currentTier, fromTier) || Objects.equals(currentTier, toTier)) {
+            return null;
+        }
+        for (Attribute attr : typeBlock.getType().getAll()) {
+            for (Method method : attr.getClass().getMethods()) {
+                if (!method.getName().equals("upgradeResult") || method.getParameterCount() != 2
+                        || !method.getParameterTypes()[1].isInstance(toTier)) {
+                    continue;
+                }
+                try {
+                    Object result = method.invoke(attr, state, toTier);
+                    if (!(result instanceof BlockState upgraded) || upgraded == state) {
+                        return null;
+                    }
+                    return upgraded;
+                } catch (ReflectiveOperationException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the block's own addon tier object matching {@code targetClass} -- either directly (an
+     * {@link Attribute}'s {@code tier()} return value is itself an instance of it), or one
+     * {@code get*Tier()} unwrap down (e.g. an {@code ExtraFactoryTier} attribute's tier unwraps via
+     * {@code getAdvanceTier()} to the {@code AdvancedTier} an {@code ExtraItemTierInstaller} actually
+     * compares against). Returns {@code null} if the block carries no matching tier at all (a regular,
+     * non-tiered machine).
+     */
+    @Nullable
+    private static Object currentAddonTierOfClass(ITypeBlock typeBlock, Class<?> targetClass) {
+        for (Attribute attr : typeBlock.getType().getAll()) {
+            Object tierObj = getAddonTierObject(attr);
+            if (tierObj == null) {
+                continue;
+            }
+            if (targetClass.isInstance(tierObj)) {
+                return tierObj;
+            }
+            Object unwrapped = TierBridgeHelper.unwrapOneLevel(tierObj);
+            if (unwrapped != null && targetClass.isInstance(unwrapped)) {
+                return unwrapped;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Object tryInvoke(Item item, String methodName) {
+        try {
+            Method method = item.getClass().getMethod(methodName);
+            return method.invoke(item);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+
+    /**
+     * Attempts to read a {@code processes} count from an addon factory block entity via reflection.
+     * Addon mods follow the convention of exposing a public {@code tier} field on their factory BE,
+     * whose type has a public {@code int processes} field. Returns {@code null} on any mismatch.
+     */
+    @Nullable
+    private static Integer getProcessesFromBE(BlockEntity be) {
+        try {
+            Field tierField = be.getClass().getField("tier");
+            Object tierObj = tierField.get(be);
+            if (tierObj == null) {
+                return null;
+            }
+            Field processesField = tierObj.getClass().getField("processes");
+            return (Integer) processesField.get(tierObj);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Attempts to read a {@code processes} count from an addon factory block's custom tier attribute
+     * via reflection. Addon mods implement {@link Attribute} as a Java record or class with a
+     * {@code tier()} or {@code tier} accessor; the returned tier object has a public {@code int processes} field.
+     * Returns {@code null} on any mismatch (e.g. cable tiers, non-factory attributes).
+     */
+    @Nullable
+    private static Integer getProcessesFromAttribute(Attribute attr) {
+        try {
+            Method tierMethod = attr.getClass().getMethod("tier");
+            Object tierObj = tierMethod.invoke(attr);
+            if (tierObj == null) {
+                return null;
+            }
+            Field processesField = tierObj.getClass().getField("processes");
+            return (Integer) processesField.get(tierObj);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
     }
 }

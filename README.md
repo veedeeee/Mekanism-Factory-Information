@@ -75,6 +75,9 @@ Looking at a Mekanism block shows additional information in the Jade HUD:
 
 **Upgrade preview:** While sneaking and holding a Tier Installer (for Factories / Tanks / Energy Cubes) or an Alloy (for Cables / Pipes / Tubes / Transporters), the HUD shows the current value alongside what it would become after the upgrade.
 
+## Known limitations
+- **EvolvedMekanismExtras + MekanismExtras Alloy upgrade preview:** When EvolvedMekanismExtras is installed, it translates a MekanismExtras Alloy's tier into its own distinct tier enum before upgrading one of its own transmitters — a conversion done by EvolvedMekanismExtras' own glue code, not by any structural convention this mod's reflection-based preview can discover. As a result, sneaking with a MekanismExtras Alloy near an EvolvedMekanismExtras transmitter shows no upgrade preview in the Jade HUD (the upgrade itself still works normally in-game; only the preview is unavailable).
+
 ## Supported targets
 | Module         | Mod Loader | Minecraft |
 | -------------- | ---------- | --------- |
