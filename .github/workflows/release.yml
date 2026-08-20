@@ -38,6 +38,14 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Debug changelog lookup
+        shell: bash
+        run: |
+          echo "--- pwd ---"; pwd
+          echo "--- ls ---"; ls -la
+          echo "--- CHANGELOG.md hexdump head ---"; head -c 40 CHANGELOG.md | xxd
+          echo "--- version output ---"; echo "[${{ steps.version.outputs.version }}]"
+
       - name: Extract changelog section
         id: changelog
         shell: bash
