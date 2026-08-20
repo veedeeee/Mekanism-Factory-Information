@@ -2,6 +2,7 @@ package wtf.vd.mekfactoryinfo.compat.mekanism;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Objects;
 import mekanism.api.tier.BaseTier;
 import mekanism.common.block.attribute.Attribute;
 import mekanism.common.block.attribute.AttributeTier;
@@ -11,6 +12,7 @@ import mekanism.common.item.ItemTierInstaller;
 import mekanism.common.tier.FactoryTier;
 import mekanism.common.tile.factory.TileEntityFactory;
 import mekanism.common.tile.prefab.TileEntityConfigurableMachine;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -183,9 +185,23 @@ public final class FactoryLinesHelper {
      */
     @Nullable
     public static Integer getPreviewLines(BlockState state, ItemStack heldItem) {
-        if (!(heldItem.getItem() instanceof ItemTierInstaller installer)) {
-            return null;
+        Item item = heldItem.getItem();
+        if (item instanceof ItemTierInstaller installer) {
+            return previewViaVanillaInstaller(state, installer);
         }
+        // Addon mods (MekanismExtras' ExtraItemTierInstaller, EvolvedMekanismExtras'
+        // EMExtraItemTierInstaller, and any similarly-shaped future addon) define their own,
+        // entirely separate Tier Installer item class and tier enum instead of reusing Mekanism's
+        // ItemTierInstaller/BaseTier -- but every one of them follows the exact same structural
+        // convention (a plain Item with a nullable getFromTier()/non-null getToTier(), an
+        // Attribute-shaped "upgradeResult(BlockState, tier)" method, and a "get*Tier()" one-level
+        // unwrap from the block's own tier attribute down to that same tier type), so this drives the
+        // identical preview purely via reflection instead of requiring an addon-specific mapping.
+        return previewViaAddonInstaller(state, item);
+    }
+
+    @Nullable
+    private static Integer previewViaVanillaInstaller(BlockState state, ItemTierInstaller installer) {
         AttributeUpgradeable upgradeable = Attribute.get(state, AttributeUpgradeable.class);
         if (upgradeable == null) {
             return null;
@@ -205,6 +221,84 @@ public final class FactoryLinesHelper {
         FactoryTier afterTier = TierAttributeHelper.getTierSafely(upgraded.getBlockHolder(), FactoryTier.class);
         return afterTier == null ? null : afterTier.processes;
     }
+
+    /**
+     * Reflective counterpart to {@link #previewViaVanillaInstaller} for addon Tier Installer items
+     * that don't extend {@link ItemTierInstaller} at all (see the class-level javadoc on
+     * {@link #getPreviewLines}). Returns {@code null} if {@code item} doesn't match the expected
+     * shape, or if the upgrade wouldn't apply to {@code state} (no-op, mirroring the vanilla path).
+     */
+    @Nullable
+    private static Integer previewViaAddonInstaller(BlockState state, Item item) {
+        Object toTier = tryInvoke(item, "getToTier");
+        if (toTier == null) {
+            return null;
+        }
+        Object fromTier = tryInvoke(item, "getFromTier");
+        Block block = state.getBlockHolder().value();
+        if (!(block instanceof ITypeBlock typeBlock)) {
+            return null;
+        }
+        Object currentTier = currentAddonTierOfClass(typeBlock, toTier.getClass());
+        if (!Objects.equals(currentTier, fromTier) || Objects.equals(currentTier, toTier)) {
+            return null;
+        }
+        for (Attribute attr : typeBlock.getType().getAll()) {
+            for (Method method : attr.getClass().getMethods()) {
+                if (!method.getName().equals("upgradeResult") || method.getParameterCount() != 2
+                        || !method.getParameterTypes()[1].isInstance(toTier)) {
+                    continue;
+                }
+                try {
+                    Object result = method.invoke(attr, state, toTier);
+                    if (!(result instanceof BlockState upgraded) || upgraded == state) {
+                        return null;
+                    }
+                    return getLinesForBlock(upgraded.getBlockHolder().value());
+                } catch (ReflectiveOperationException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the block's own addon tier object matching {@code targetClass} -- either directly (an
+     * {@link Attribute}'s {@code tier()} return value is itself an instance of it), or one
+     * {@code get*Tier()} unwrap down (e.g. an {@code ExtraFactoryTier} attribute's tier unwraps via
+     * {@code getAdvanceTier()} to the {@code AdvancedTier} an {@code ExtraItemTierInstaller} actually
+     * compares against). Returns {@code null} if the block carries no matching tier at all (a regular,
+     * non-tiered machine).
+     */
+    @Nullable
+    private static Object currentAddonTierOfClass(ITypeBlock typeBlock, Class<?> targetClass) {
+        for (Attribute attr : typeBlock.getType().getAll()) {
+            Object tierObj = getAddonTierObject(attr);
+            if (tierObj == null) {
+                continue;
+            }
+            if (targetClass.isInstance(tierObj)) {
+                return tierObj;
+            }
+            Object unwrapped = TierBridgeHelper.unwrapOneLevel(tierObj);
+            if (unwrapped != null && targetClass.isInstance(unwrapped)) {
+                return unwrapped;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Object tryInvoke(Item item, String methodName) {
+        try {
+            Method method = item.getClass().getMethod(methodName);
+            return method.invoke(item);
+        } catch (ReflectiveOperationException e) {
+            return null;
+        }
+    }
+
 
     /**
      * Attempts to read a {@code processes} count from an addon factory block entity via reflection.

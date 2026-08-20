@@ -56,7 +56,7 @@ public enum CableSpecProvider implements IBlockComponentProvider {
         Player player = accessor.getPlayer();
         if (player != null && player.isShiftKeyDown()) {
             ItemStack heldItem = player.getMainHandItem();
-            preview = CableSpecHelper.getPreviewSpec(state, heldItem);
+            preview = CableSpecHelper.getPreviewSpec(state, accessor.getBlockEntity(), heldItem);
         }
 
         boolean isTransporter = isTransporter(state);
